@@ -123,6 +123,7 @@ export default function RecentActivity() {
             minute: "2-digit",
             })}
         </p>
+        <p>{a.updatedBy}</p>
       </div>
     </div>
   );

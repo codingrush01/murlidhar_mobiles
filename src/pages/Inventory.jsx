@@ -371,24 +371,100 @@ const [userShopId, setUserShopId] = useState(null);
     //     });
     //   }, []);
 
+    // useEffect(() => {
+    //   if (!userShopId) return;
+    
+    //   console.log("📦 Listening inventory for shop:", userShopId);
+    
+    //   return onSnapshot(
+    //     query(
+    //       collection(db, "inventory"),
+    //       where("shop_id", "==", userShopId)
+    //     ),
+    //     (snap) => {
+    //       setInventory(
+    //         snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    //       );
+    //       console.log(userShopId);
+    //     }
+    //   );
+    // }, [userShopId]);
+    
+
+    const [userRole, setUserRole] = useState(null);
+
     useEffect(() => {
-      if (!userShopId) return;
+      const auth = getAuth();
     
-      console.log("📦 Listening inventory for shop:", userShopId);
-    
-      return onSnapshot(
-        query(
-          collection(db, "inventory"),
-          where("shop_id", "==", userShopId)
-        ),
-        (snap) => {
-          setInventory(
-            snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          );
+      const unsub = onAuthStateChanged(auth, async (u) => {
+        if (!u) {
+          console.log("❌ No user logged in");
+          setUser(null);
+          setUserShopId(null);
+          setUserRole(null);
+          return;
         }
-      );
-    }, [userShopId]);
     
+        console.log("✅ Logged in user:", u.email);
+        setUser(u);
+    
+        // 1️⃣ Check users collection for role & shop
+        const userQuery = query(
+          collection(db, "users"),
+          where("email", "==", u.email)
+        );
+        const userSnap = await getDocs(userQuery);
+    
+        if (userSnap.empty) {
+          console.error("❌ No user document found, defaulting to admin");
+          setUserRole("admin");
+          setUserShopId(null);
+          return;
+        }
+    
+        const userDoc = userSnap.docs[0].data();
+        const { shopId, role } = userDoc;
+    
+        if (role === "admin" || !shopId) {
+          setUserRole("admin");
+          setUserShopId(null);
+          console.log("👑 Admin detected");
+        } else {
+          setUserRole("owner");
+          setUserShopId(shopId); // Firestore doc ID
+          console.log("🏪 Shop owner detected, shop doc ID:", shopId);
+        }
+      });
+    
+      return () => unsub();
+    }, []);
+
+    useEffect(() => {
+      if (!userRole) return;
+    
+      let inventoryQuery;
+      if (userRole === "admin") {
+        inventoryQuery = collection(db, "inventory"); // all inventory for admin
+      } else if (userRole === "owner" && userShopId) {
+        inventoryQuery = query(
+          collection(db, "inventory"),
+          where("shop_id", "==", userShopId) // use Firestore doc ID
+        );
+      } else {
+        console.warn("⚠️ User has no shop assigned and is not admin");
+        setInventory([]);
+        return;
+      }
+    
+      const unsub = onSnapshot(inventoryQuery, (snap) => {
+        setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    
+      return () => unsub();
+    }, [userRole, userShopId]);
+    
+   
+
     
     
       useEffect(() => {
@@ -423,10 +499,30 @@ const [userShopId, setUserShopId] = useState(null);
         });
       }, []);
 
+      // const updateField = async (id, data) => {
+      //   await updateDoc(doc(db, "inventory", id), {
+      //     ...data,
+      //     updatedAt: serverTimestamp(),
+      //   });
+      // };
+
       const updateField = async (id, data) => {
+        let updater = "Unknown";
+      
+        // if user is set, get role and shop
+        if (user) {
+          if (userRole === "admin") {
+            updater = `Admin (${user.email})`;
+          } else if (userRole === "owner" && userShopId) {
+            const shopName = shopMap[userShopId] || userShopId;
+            updater = `Owner (${user.email}) - ${shopName}`;
+          }
+        }
+      
         await updateDoc(doc(db, "inventory", id), {
           ...data,
           updatedAt: serverTimestamp(),
+          updatedBy: updater, // <-- this will store who updated it
         });
       };
 

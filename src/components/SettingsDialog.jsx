@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/utils/firebase";
 
-import { doc, onSnapshot, setDoc, serverTimestamp, getCountFromServer ,collection } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, serverTimestamp, getCountFromServer ,collection, getDoc } from "firebase/firestore";
 
 import {
   Dialog,
@@ -30,6 +30,7 @@ import {
   Loader2,
 } from "lucide-react";
 import UserManagement from "./userManagement";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function SettingsDialog({ user, shop }) {
   const [open, setOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function SettingsDialog({ user, shop }) {
     orders: 2400,
     settings: 800,
   };
+
   
   // Firestore index overhead (~35%)
   const INDEX_OVERHEAD = 1.35;
@@ -57,6 +59,53 @@ export default function SettingsDialog({ user, shop }) {
     remainingMB: FREE_TIER_MB,
     loading: true,
   });
+  // let isShopUser = false;
+  // useEffect(() => {
+  //   const auth = getAuth();
+  //   const unsub = onAuthStateChanged(auth, async (u) => {
+  //     console.log("Auth state changed, user:", u);
+      
+  //   });
+  //   console.log("Current user at useEffect start:", auth.currentUser);
+  //   return () => unsub();
+  // }, []);
+
+
+  const [isShopUser, setIsShopUser] = useState(null); // stores uid or email
+  const [userRole, setUserRole] = useState(null); // "admin", "owner", or null
+
+  useEffect(() => {
+    const auth = getAuth();
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const uidOrEmail = user.email || user.uid;
+        setIsShopUser(uidOrEmail);
+
+        console.log("Auth state changed, user:", uidOrEmail);
+
+        // Fetch role from Firestore (example: collection "users", doc = uid)
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserRole(data.role); // assume field is "role": "owner" | "admin"
+          console.log("User role:", data.role);
+        } else {
+          console.log("No role info found");
+          setUserRole(null);
+        }
+      } else {
+        setIsShopUser(null);
+        setUserRole(null);
+        console.log("No user logged in");
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   /* 🔹 Load settings */
   useEffect(() => {
     const ref = doc(db, "settings", "global");
@@ -146,10 +195,18 @@ export default function SettingsDialog({ user, shop }) {
               <User className="h-4 w-4" />
               <p className="sm:block hidden">user</p>
             </TabsTrigger>
-            <TabsTrigger value="inventory" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
-              <Package className="h-4 w-4" />
-              <p className="sm:block hidden">inventory</p>
-            </TabsTrigger>
+            {console.log(isShopUser, userRole)}
+
+            {/* Only show inventory tab if user is admin */}
+            {userRole === "admin" && (
+              <TabsTrigger
+                value="inventory"
+                className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50 pt-0.5"
+              >
+                <Package className="h-4 w-4" />
+                <p className="sm:block hidden">Inventory</p>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="appearance" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
               <Moon className="h-4 w-4" />
               <p className="sm:block hidden">Appearance</p>
@@ -181,6 +238,7 @@ export default function SettingsDialog({ user, shop }) {
                 type="number"
                 className="w-24"
                 value={lowStockQty}
+                disabled={isShopUser}
                 onChange={(e) => setLowStockQty(e.target.value)}
               />
             </div>
@@ -196,6 +254,7 @@ export default function SettingsDialog({ user, shop }) {
                 type="number"
                 className="w-28"
                 value={lowStockValue}
+                disabled={isShopUser}
                 onChange={(e) => setLowStockValue(e.target.value)}
               />
             </div>
@@ -240,14 +299,24 @@ export default function SettingsDialog({ user, shop }) {
 
         </Tabs>
 
-        <Button
+        {/* <Button
           onClick={saveSettings}
           className="w-full mt-4 gap-2"
           disabled={isSaving}
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           {isSaving ? "Saving..." : "Save Settings"}
-        </Button>
+        </Button> */}
+        {!isShopUser && (
+          <Button
+            onClick={saveSettings}
+            className="w-full mt-4 gap-2"
+            disabled={isSaving}
+          >
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSaving ? "Saving..." : "Save Settings"}
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );
