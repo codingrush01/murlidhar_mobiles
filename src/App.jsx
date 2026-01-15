@@ -1,8 +1,8 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { auth, db } from './utils/firebase'; // Ensure your firebase path is correct
+import { auth, db } from './utils/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-import ShopCreation from './pages/ShopCreation'; // Import your new page
+import ShopCreation from './pages/ShopCreation'; 
 import Login from './components/Login';
 import PageTransition from './components/page-transition';
 import Dashboard from './pages/Dashboard';
@@ -43,10 +43,10 @@ function App() {
       setLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup
+    return () => unsubscribe(); 
   }, []);
 
-  if (loading) return null; // Or a sleek GSAP spinner/loading screen
+  if (loading) return null; 
 
   return (
     <PageTransition key={location.pathname}>

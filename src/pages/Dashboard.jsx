@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "../utils/firebase";
 import { collection, doc, onSnapshot } from "firebase/firestore";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
 import { Store, ArrowUpRight, Activity, Users, ArrowDownRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import InventoryValueChart from "@/components/InventoryValueChart";
@@ -54,7 +52,6 @@ export default function Dashboard() {
     };
   });
 
-  // Real-time listener for Shop Count
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "shops"), (snapshot) => {
       setStats((prev) => ({ ...prev, shopCount: snapshot.size }));
@@ -89,7 +86,8 @@ export default function Dashboard() {
   return (
     <div ref={container} className="p-8 max-w-7xl mx-auto space-y-10">
       <div className="space-y-1">
-        <h1 className="text-4xl font-bold tracking-tight">Overview</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Overview's</h1>
+        <p>asdasd</p>
         <p className="text-muted-foreground">Everything happening across your business.</p>
       </div>
 
