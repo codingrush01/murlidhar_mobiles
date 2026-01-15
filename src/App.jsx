@@ -1,3 +1,4 @@
+// deployment read build
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { auth, db } from './utils/firebase'; 
