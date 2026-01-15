@@ -232,7 +232,7 @@ useEffect(() => {
     if (isShopUser && selectedShop !== userShopId) {
       return toast.error("You cannot add inventory for another shop");
     }
-    
+
     if (!selectedShop || !selectedBrand || !modelName || !selectedCat || !price || !qty) {
       return toast.error("Complete all fields");
     }
@@ -289,7 +289,13 @@ useEffect(() => {
     <div className="p-8 max-w-7xl mx-auto space-y-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-      <Label>Select Shop</Label>
+      <div className="space-y-1">
+              <h1 className="text-4xl font-bold tracking-tight">
+              Stock Entery
+              </h1>
+           
+            </div>
+      {/* <Label>Select Shop</Label> */}
       <Dialog open={open} onOpenChange={setOpen}>
   <DialogTrigger asChild>
   <Button variant="default" className="px-4 gap-2 shadow-none  active:scale-95 transition-transform">
@@ -301,7 +307,7 @@ useEffect(() => {
   <DialogContent className="sm:max-w-full rounded-none h-full block max-w-[100%] w-full">
     <DialogTitle className=" h-fit">Categories & Brands</DialogTitle>
 
-    <Tabs defaultValue="cats" className="mt-4">
+    <Tabs defaultValue="cats" className="mt-4 w-full md:w-fit">
       <TabsList className="grid grid-cols-2 gap-2 bg-transparent">
         <TabsTrigger value="cats" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Cover Types</TabsTrigger>
         <TabsTrigger value="brands" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50 pt-0.5">Brands</TabsTrigger>
@@ -382,7 +388,7 @@ useEffect(() => {
       </div>
 
 
-          <div className="space-y-6 w-md mx-auto">
+          <div className="space-y-6 w-full md:w-md mx-auto">
 
       <div className="flex gap-2 flex-wrap">
         {/* {shops.map(s => (

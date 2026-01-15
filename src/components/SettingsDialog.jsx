@@ -184,13 +184,13 @@ export default function SettingsDialog({ user, shop }) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-full h-full rounded-none block">
+      <DialogContent className="sm:max-w-full h-full rounded-none block max-w-full w-full">
         <DialogHeader>
           <DialogTitle>Application Settings</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="user" className="w-full mt-6">
-          <TabsList className="grid grid-cols-5 bg-transparent">
+          <TabsList className="grid grid-cols-5 gap-1 bg-transparent">
             <TabsTrigger value="user" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
               <User className="h-4 w-4" />
               <p className="sm:block hidden">user</p>

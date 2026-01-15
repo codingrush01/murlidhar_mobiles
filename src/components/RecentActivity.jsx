@@ -9,7 +9,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 
-import { Package, Clock, ArrowUpRight } from "lucide-react";
+import { Package, Clock, ArrowUpRight, Search, InfoIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -90,6 +90,24 @@ export default function RecentActivity() {
       return inDateRange && matchesSearch;
     });
   }, [activities, filter, search, modelMap, shopMap]);
+  
+  // Utility function to format updatedBy
+function formatUpdatedBy(updatedBy) {
+  if (!updatedBy) return "";
+
+  // Split by " - " to separate owner info and shop name
+  const [ownerPart, shopPart] = updatedBy.split(" - ");
+
+  if (!shopPart) return updatedBy; // fallback
+
+  // Extract text inside parentheses, if exists
+  const ownerMatch = ownerPart.match(/\(([^)]+)\)/);
+  const owner = ownerMatch ? ownerMatch[1] : ownerPart;
+
+  // Return final formatted string
+  return `${shopPart} (Owner: ${owner})`;
+}
+
 
   const ActivityRow = ({ a }) => (
     <div className="flex items-center gap-4 p-3 rounded-xl border bg-muted/30">
@@ -108,6 +126,7 @@ export default function RecentActivity() {
           <span className="font-medium">
             {shopMap[a.shop_id] || "Unknown"}
           </span>
+          <p className="text-xs text-muted-foreground flex items-center gap-1 justify-start">{"updated by:" + formatUpdatedBy(a.updatedBy)}</p>
         </p>
       </div>
 
@@ -123,7 +142,7 @@ export default function RecentActivity() {
             minute: "2-digit",
             })}
         </p>
-        <p>{a.updatedBy}</p>
+     
       </div>
     </div>
   );
@@ -142,36 +161,43 @@ export default function RecentActivity() {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-5xl h-[90vh] overflow-hidden">
+          <DialogContent className="rounded-none sm:max-w-full max-w-full w-full  h-lvh overflow-hidden block ">
             <DialogHeader>
               <DialogTitle>Inventory Activity</DialogTitle>
             </DialogHeader>
 
             {/* FILTERS */}
-            <div className="flex flex-col md:flex-row gap-3 mt-2">
+            <div className="flex flex-col  md:flex-row gap-3 mt-6 ">
               <Tabs value={filter} onValueChange={setFilter}>
-                <TabsList>
-                  <TabsTrigger value="7d">7 Days</TabsTrigger>
-                  <TabsTrigger value="30d">Month</TabsTrigger>
-                  <TabsTrigger value="1y">Year</TabsTrigger>
+                <TabsList className=" bg-transparent">
+                  <TabsTrigger value="7d" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">7 Days</TabsTrigger>
+                  <TabsTrigger value="30d" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Month</TabsTrigger>
+                  <TabsTrigger value="1y" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Year</TabsTrigger>
                 </TabsList>
               </Tabs>
 
               {/* 🔍 SEARCH */}
-              <Input
-                placeholder="Search by model or shop..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="md:max-w-xs"
-              />
+                 <div className="relative flex-1">
+                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by model or shop..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="md:max-w-xs pl-8"
+                    />
+                </div>
             </div>
 
             {/* LIST */}
             <div className="mt-4 space-y-3 overflow-y-auto h-full pr-2">
               {filtered.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No activity found.
+                <div className="h-[50%] w-full flex flex-col items-center justify-center">
+
+                <InfoIcon className="text-muted-foreground" size="38"  aria-label="Information" />
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No activity logs found. 
                 </p>
+                </div>
               )}
               {filtered.map((a) => (
                 <ActivityRow key={a.id} a={a} />
@@ -181,9 +207,12 @@ export default function RecentActivity() {
         </Dialog>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {activities.slice(0, 8).map((a) => (
-          <ActivityRow key={a.id} a={a} />
+      <CardContent className="space-y-4 overflow-y-scroll" >
+        {activities.slice(0, 5).map((a) => (
+          <ActivityRow key={a.id}  a={{
+            ...a,
+            updatedBy: a.updatedBy ? a.updatedBy.split(" - ")[1] : " ", 
+          }} />
         ))}
       </CardContent>
     </Card>

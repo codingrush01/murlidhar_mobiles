@@ -121,11 +121,11 @@ export default function AdvancedSummaryDialog({ inventory }) {
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2">
           <BarChart3 className="h-4 w-4" />
-          Advanced Summary
+          <p className="hidden sm:block">Advanced Summary</p>
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-full h-lvh rounded-none block overflow-hidden">
+      <DialogContent className="sm:max-w-full w-full max-w-full h-lvh rounded-none block overflow-hidden">
         <DialogHeader>
           <DialogTitle>Inventory Summary</DialogTitle>
         </DialogHeader>

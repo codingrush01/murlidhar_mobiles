@@ -53,7 +53,7 @@ export function ReorderSheet({
 
   return (
     <Sheet open onOpenChange={onClose}>
-      <SheetContent side="right" className="w-[400px]">
+      <SheetContent side="right" className="w-full max-w-[400px]">
         <SheetHeader>
           <SheetTitle>Reorder Stock</SheetTitle>
         </SheetHeader>

@@ -550,13 +550,19 @@ const [userShopId, setUserShopId] = useState(null);
       }, [inventory, search, tab, shopMap, modelMap, brandMap, settings]);
     
       return (
-        <Card className="rounded-[2rem] shadow-none">
+        <Card className="rounded-[2rem] shadow-none border-none">
           <CardHeader className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <div className="space-y-1">
+              <h1 className="text-4xl font-bold tracking-tight">
+              Inventory
+              </h1>
+           
+            </div>
+              {/* <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 Inventory
-              </CardTitle>
+              </CardTitle> */}
             </div>
     
             <div className="flex gap-2  max-w-xl w-full">
@@ -585,7 +591,9 @@ const [userShopId, setUserShopId] = useState(null);
             </Tabs>
     
               {/* HEADER ROW */}
-              <div className="grid grid-cols-8 text-xs text-muted-foreground px-2 mb-2">
+              <div className="grid grid-cols-2
+                      sm:grid-cols-4
+                      md:grid-cols-8 text-xs text-muted-foreground px-2 mb-2">
                 <div className="">Brand</div>
                 <div className="">Model</div>
                 <div className="">Store</div>
@@ -606,7 +614,10 @@ const [userShopId, setUserShopId] = useState(null);
                   return (
                     <div
                       key={i.id}
-                      className="grid grid-cols-8 items-center gap-2 rounded-none border-b border-border/50 p-3"
+                      className="grid grid-cols-2
+                      sm:grid-cols-4
+                      md:grid-cols-8
+                      items-center gap-2 rounded-none border-b border-border/50 p-3"
                     >
                       <div className="">{brandMap[i.brand_id] ?? "—"}
                       </div>
