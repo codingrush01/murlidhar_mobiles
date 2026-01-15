@@ -87,7 +87,6 @@ export default function Dashboard() {
     <div ref={container} className="p-8 max-w-7xl mx-auto space-y-10">
       <div className="space-y-1">
         <h1 className="text-4xl font-bold tracking-tight">Overview's</h1>
-        <p>asdasd</p>
         <p className="text-muted-foreground">Everything happening across your business.</p>
       </div>
 
