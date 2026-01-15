@@ -67,6 +67,10 @@ export default function Navbar({ user }) {
             Inventory
           </Link>
           
+          <Link to="/stock-entery" className={navItemStyles("/stock-entery")}>
+            <StoreIcon className="h-4 w-4" />
+            Stock Entery
+          </Link>
           <Link to="/shops" className={navItemStyles("/shops")}>
             <StoreIcon className="h-4 w-4" />
             Stores

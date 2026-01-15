@@ -8,6 +8,8 @@ import PageTransition from './components/page-transition';
 import Dashboard from './pages/Dashboard';
 import Navbar from './components/Navbar';
 import { Toaster } from 'sonner';
+import StockEntry from './pages/StockEntry';
+import InventoryPage from './pages/Inventory';
 
 function App() {
   const location = useLocation();
@@ -51,6 +53,14 @@ function App() {
         <Route 
           path="/shops" 
           element={user ? <ShopCreation /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/stock-entery" 
+          element={user ? <StockEntry /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/inventory" 
+          element={user ? <InventoryPage /> : <Navigate to="/login" />} 
         />
         
         <Route path="/" element={<Navigate to="/login" />} />
