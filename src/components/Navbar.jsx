@@ -5,7 +5,7 @@ import { signOut } from "firebase/auth";
 import { toast } from "sonner";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { LogOut, Package2, LayoutDashboard, Box, StoreIcon, Package2Icon, Warehouse, LayoutPanelTop } from "lucide-react";
+import { LogOut, Package2, LayoutDashboard, Box, StoreIcon, Package2Icon, Warehouse, LayoutPanelTop, FeatherIcon } from "lucide-react";
 import { Button } from "./ui/button";
 
 export default function Navbar({ user }) {
@@ -50,8 +50,9 @@ export default function Navbar({ user }) {
       <div className=" flex h-[80px]  items-center justify-between px-8 mx-auto">
         {/* Logo */}
         <div className="flex items-center gap-2 font-bold text-xl tracking-tighter">
-          <div className="rounded-lg shadow-primary/20">
-            MarutiMobiles
+            {/* MarutiMobiles */}
+          <div className="flex gap-1  text-green-500 rounded-lg shadow-primary/20">
+           મુરલીધર <FeatherIcon />
           </div>
         </div>
 

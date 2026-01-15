@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState(""); // Added password state
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useGSAP(() => {
     gsap.from(".animate-item", {
@@ -73,7 +75,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@gmail.com"
+                  placeholder="shop@gmail.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -81,17 +83,26 @@ export default function Login() {
                 />
               </div>
 
-              <div className="grid gap-2 text-left animate-item">
-                <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="shadow-none focus-visible:ring-1" 
-                />
-              </div>
+     
+
+<div className=" grid gap-2 text-left animate-item relative">
+  <Label htmlFor="password">Password</Label>
+  <Input
+    id="password"
+    type={showPassword ? "text" : "password"}
+    required
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    className="shadow-none focus-visible:ring-1 pr-10" // add padding for icon
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-2 top-10 -translate-y-1/2 text-muted-foreground"
+  >
+    {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+  </button>
+</div>
 
               <div className="animate-item w-full">
                 <Button 
@@ -104,10 +115,20 @@ export default function Login() {
               </div>
             </div>
           </form>
+          {/* <p className="text-sm text-right mt-1 animate-item">
+            <Button
+              variant="link"
+              type="button"
+              onClick={() => navigate("/forgot-password")}
+              className="text-primary  text-xs mt-0 p-0"
+            >
+              Forgot Password?
+            </Button>
+          </p> */}
         </CardContent>
 
         <CardFooter className="flex-col gap-2 animate-item">
-          <p className="text-xs text-muted-foreground opacity-70">Secured by Firebase</p>
+          <p className="text-xs text-muted-foreground opacity-70">Secured by Google</p>
         </CardFooter>
       </Card>
     </div>

@@ -111,7 +111,7 @@ function formatUpdatedBy(updatedBy) {
 
   const ActivityRow = ({ a }) => (
     <div className="flex items-center gap-4 p-3 rounded-xl border bg-muted/30">
-      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+      <div className="p-2 rounded-lg bg-blue-500/50 text-blue-200">
         <Package className="h-4 w-4" />
       </div>
 
@@ -167,17 +167,20 @@ function formatUpdatedBy(updatedBy) {
             </DialogHeader>
 
             {/* FILTERS */}
-            <div className="flex flex-col  md:flex-row gap-3 mt-6 ">
+            <div className="flex flex-col justify-between w-full  max-w-full  md:flex-row gap-3 mt-6 ">
               <Tabs value={filter} onValueChange={setFilter}>
                 <TabsList className=" bg-transparent">
-                  <TabsTrigger value="7d" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">7 Days</TabsTrigger>
-                  <TabsTrigger value="30d" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Month</TabsTrigger>
-                  <TabsTrigger value="1y" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Year</TabsTrigger>
+                  <TabsTrigger value="7d" className=" dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5 border-0">7 Days</TabsTrigger>
+                  <TabsTrigger value="30d" className=" dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5 border-0">Month</TabsTrigger>
+                  <TabsTrigger value="1y" className=" dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5 border-0">Year</TabsTrigger>
                 </TabsList>
               </Tabs>
 
               {/* 🔍 SEARCH */}
-                 <div className="relative flex-1">
+                 <div className="mr-auto flex relative flex-1 w-full">
                     <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Search by model or shop..."

@@ -11,6 +11,7 @@ import { Toaster } from 'sonner';
 import StockEntry from './pages/StockEntry';
 import InventoryPage from './pages/Inventory';
 import { doc, onSnapshot } from 'firebase/firestore';
+import ForgotPassword from './pages/ForgotPWD';
 
 function App() {
   const location = useLocation();
@@ -60,6 +61,10 @@ function App() {
           path="/login" 
           element={user ? <Navigate to="/dashboard" /> : <Login />} 
         />
+        {/* <Route 
+          path="/forgot-password" 
+          element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} 
+        /> */}
 
         
 
