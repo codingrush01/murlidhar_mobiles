@@ -9,6 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+"engines": {
+  "node": "20.x",
+  "npm": "10.x"
+},
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
