@@ -59,7 +59,7 @@ export default function Navbar({ user }) {
         {/* Navigation Links */}
         <nav className=" flex items-center gap-2 p-1 rounded-full ">
           <Link to="/dashboard" className={navItemStyles("/dashboard")}>
-            <LayoutPanelTop  className={`h-4 w-4 ${isActive("/dashboard") ? "animate-pulse" : ""}`} />
+            <LayoutPanelTop  className={`h-4 w-4 ${isActive("/dashboard") ? "" : ""}`} />
             <p className="hidden md:block">
             Dashboard
             </p>

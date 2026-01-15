@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input"; // NEW
+import { ScrollArea } from "./ui/scroll-area";
 
 export default function RecentActivity() {
   const [activities, setActivities] = useState([]);
@@ -34,6 +35,8 @@ export default function RecentActivity() {
   const [filter, setFilter] = useState("7d");
   const [search, setSearch] = useState(""); // NEW
 
+    const [types, setTypes] = useState([]); 
+    const [typeMap, setTypeMap] = useState({});
   // 🔹 Inventory
   useEffect(() => {
     const q = query(
@@ -47,6 +50,21 @@ export default function RecentActivity() {
       );
     });
   }, []);
+
+  // type 
+    useEffect(() => {
+      const q = query(collection(db, "phone_cover_types")); // ✅ CHECK THIS NAME
+    
+      return onSnapshot(q, (snap) => {
+        const map = {};
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          map[d.id] = data.name; // ✅ CHECK FIELD NAME
+        });
+    
+        setTypeMap(map);
+      });
+    }, []);
 
   // 🔹 Shops
   useEffect(() => {
@@ -110,23 +128,31 @@ function formatUpdatedBy(updatedBy) {
 
 
   const ActivityRow = ({ a }) => (
-    <div className="flex items-center gap-4 p-3 rounded-xl border bg-muted/30">
+    <div className="p-3 rounded-xl border border-border/50 bg-muted/30 ">
+      <div className="flex flex-container-row  items-start gap-4 ">
+
       <div className="p-2 rounded-lg bg-blue-500/50 text-blue-200">
         <Package className="h-4 w-4" />
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 pb-2">
         <p className="text-sm font-medium">Stock updated</p>
         <div className="text-xs text-muted-foreground">
           Model:{" "}
           <span className="font-medium">
             {modelMap[a.model_id] || "Unknown"}
+            <br />
           </span>{" "}
-          • Shop:{" "}
+          Shop:{" "}
           <span className="font-medium">
             {shopMap[a.shop_id] || "Unknown"}
           </span>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 justify-start">{"updated by:" + formatUpdatedBy(a.updatedBy)}</p>
+          <br />
+          cover:{" "}
+          <span className="font-medium">
+            {typeMap[a.type_id] || "Unknown"}
+          </span>
+   
         </div>
       </div>
 
@@ -144,11 +170,15 @@ function formatUpdatedBy(updatedBy) {
         </p>
      
       </div>
-    </div>
+      </div>
+
+      <p className="border-t pb-0 py-2 text-center border-border/50 text-xs text-muted-foreground flex items-center gap-1 justify-end">{"updated by: "}<strong> {formatUpdatedBy(a.updatedBy)}</strong></p>
+      </div>
+
   );
 
   return (
-    <Card className="rounded-[2rem] shadow-none h-full bg-muted/20">
+    <Card className="rounded-[2rem] shadow-none h-full bg-muted/20 max-w-full w-full ">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
           Recent Activity
@@ -192,9 +222,9 @@ function formatUpdatedBy(updatedBy) {
             </div>
 
             {/* LIST */}
-            <div className="mt-4 space-y-3 overflow-y-auto h-full pr-2">
+            <ScrollArea className="mt-4  border-0  h-[80%]">
               {filtered.length === 0 && (
-                <div className="h-[50%] w-full flex flex-col items-center justify-center">
+                <div className="h-[50%]   w-full flex flex-col items-center justify-center">
 
                 <InfoIcon className="text-muted-foreground" size="38"  aria-label="Information" />
                 <p className="mt-4 text-sm text-muted-foreground">
@@ -202,15 +232,21 @@ function formatUpdatedBy(updatedBy) {
                 </p>
                 </div>
               )}
+               <ScrollArea className="mt-4    h-[calc(100vh-100px)]">
+              <div className="space-y-1.5 ">
               {filtered.map((a) => (
                 <ActivityRow key={a.id} a={a} />
               ))}
-            </div>
+              </div>
+              </ScrollArea>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </CardHeader>
 
-      <CardContent className="space-y-4 overflow-y-scroll" >
+      <ScrollArea className="h-72 w-full px-0">
+
+      <CardContent className="space-y-1 pt-2 " >
         {activities.slice(0, 5).map((a) => (
           <ActivityRow key={a.id}  a={{
             ...a,
@@ -218,6 +254,8 @@ function formatUpdatedBy(updatedBy) {
           }} />
         ))}
       </CardContent>
+      </ScrollArea>
+
     </Card>
   );
 }

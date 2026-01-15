@@ -347,10 +347,16 @@ export default function InventoryPage() {
                   <div className="lg:hidden border border-border/50 rounded-lg p-3 space-y-2">
                     <div className="flex justify-between">
                       <span className="font-semibold">{brandMap[i.brand_id] ?? "—"}</span>
+                     
                       <span className="text-sm text-muted-foreground">{shopMap[i.shop_id]}</span>
+                     
+                     
                     </div>
                     <div className="flex justify-between">
-                      <span>{modelMap[i.model_id]}</span>
+                      <div className="flex gap-1">
+                        <span>{modelMap[i.model_id]}</span>
+                        <Badge className="w-fit py-1 h-fit " variant="outline">{typeMap[i.type_id]}</Badge>
+                      </div>
                       <Input
                         type="number"
                         className="h-8 w-20"
