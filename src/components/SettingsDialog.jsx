@@ -59,20 +59,10 @@ export default function SettingsDialog({ user, shop }) {
     remainingMB: FREE_TIER_MB,
     loading: true,
   });
-  // let isShopUser = false;
-  // useEffect(() => {
-  //   const auth = getAuth();
-  //   const unsub = onAuthStateChanged(auth, async (u) => {
-  //     console.log("Auth state changed, user:", u);
-      
-  //   });
-  //   console.log("Current user at useEffect start:", auth.currentUser);
-  //   return () => unsub();
-  // }, []);
+  
 
-
-  const [isShopUser, setIsShopUser] = useState(null); // stores uid or email
-  const [userRole, setUserRole] = useState(null); // "admin", "owner", or null
+  const [isShopUser, setIsShopUser] = useState(null); 
+  const [userRole, setUserRole] = useState(null); 
 
   useEffect(() => {
     const auth = getAuth();
@@ -82,7 +72,7 @@ export default function SettingsDialog({ user, shop }) {
         const uidOrEmail = user.email || user.uid;
         setIsShopUser(uidOrEmail);
 
-        console.log("Auth state changed, user:", uidOrEmail);
+        // console.log("Auth state changed, user:", uidOrEmail);
 
         // Fetch role from Firestore (example: collection "users", doc = uid)
         const docRef = doc(db, "users", user.uid);
@@ -91,22 +81,36 @@ export default function SettingsDialog({ user, shop }) {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setUserRole(data.role); // assume field is "role": "owner" | "admin"
-          console.log("User role:", data.role);
+          // console.log("User role:", data.role);
         } else {
-          console.log("No role info found");
+          // console.log("No role info found");
           setUserRole(null);
         }
       } else {
         setIsShopUser(null);
         setUserRole(null);
-        console.log("No user logged in");
+        // console.log("No user logged in");
       }
     });
 
     return () => unsubscribe();
   }, []);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
 
   /* 🔹 Load settings */
+  // useEffect(() => {
+  //   const ref = doc(db, "settings", "global");
+  //   return onSnapshot(ref, (snap) => {
+  //     if (snap.exists()) {
+  //       const d = snap.data();
+  //       setLowStockQty(d.low_stock_qty ?? 5);
+  //       setLowStockValue(d.low_stock_value ?? 1000);
+  //       setDarkMode(d.dark_mode ?? false);
+  //     }
+  //   });
+  // }, []);
+
   useEffect(() => {
     const ref = doc(db, "settings", "global");
     return onSnapshot(ref, (snap) => {
@@ -114,10 +118,20 @@ export default function SettingsDialog({ user, shop }) {
         const d = snap.data();
         setLowStockQty(d.low_stock_qty ?? 5);
         setLowStockValue(d.low_stock_value ?? 1000);
-        setDarkMode(d.dark_mode ?? false);
+        setDarkMode(!!d.dark_mode);
       }
+      setSettingsLoaded(true);
     });
   }, []);
+
+  const updateDarkMode = async (value) => {
+    setDarkMode(value);
+    await setDoc(
+      doc(db, "settings", "global"),
+      { dark_mode: value, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  };
 
   useEffect(() => {
     const calculateStorage = async () => {
@@ -171,9 +185,9 @@ export default function SettingsDialog({ user, shop }) {
   };
 
   /* 🔹 Dark mode */
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
-  }, [darkMode]);
+  // useEffect(() => {
+  //   document.documentElement.classList.toggle("dark", darkMode);
+  // }, [darkMode]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -191,27 +205,35 @@ export default function SettingsDialog({ user, shop }) {
 
         <Tabs defaultValue="user" className="w-full mt-6">
           <TabsList className="grid grid-cols-5 gap-1 bg-transparent">
-            <TabsTrigger value="user" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
+            <TabsTrigger value="user" className="border-0 
+           dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >
               <User className="h-4 w-4" />
               <p className="sm:block hidden">user</p>
             </TabsTrigger>
-            {console.log(isShopUser, userRole)}
+            {/* {console.log(isShopUser, userRole)} */}
 
             {/* Only show inventory tab if user is admin */}
             {userRole === "admin" && (
               <TabsTrigger
                 value="inventory"
-                className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50 pt-0.5"
+                className="border-0 
+                dark:data-[state=active]:bg-input/0
+                 transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" 
               >
                 <Package className="h-4 w-4" />
                 <p className="sm:block hidden">Inventory</p>
               </TabsTrigger>
             )}
-            <TabsTrigger value="appearance" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
+            <TabsTrigger value="appearance" className="border-0 
+           dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >
               <Moon className="h-4 w-4" />
               <p className="sm:block hidden">Appearance</p>
             </TabsTrigger>
-            <TabsTrigger value="storage" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
+            <TabsTrigger value="storage" className="border-0 
+           dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >
               <Database className="h-4 w-4"  />
               <p className="sm:block hidden">Storage</p>
             </TabsTrigger>
@@ -238,7 +260,6 @@ export default function SettingsDialog({ user, shop }) {
                 type="number"
                 className="w-24"
                 value={lowStockQty}
-                disabled={isShopUser}
                 onChange={(e) => setLowStockQty(e.target.value)}
               />
             </div>
@@ -254,7 +275,6 @@ export default function SettingsDialog({ user, shop }) {
                 type="number"
                 className="w-28"
                 value={lowStockValue}
-                disabled={isShopUser}
                 onChange={(e) => setLowStockValue(e.target.value)}
               />
             </div>
@@ -264,7 +284,7 @@ export default function SettingsDialog({ user, shop }) {
           <TabsContent value="appearance" className="space-y-4">
             <div className="flex items-center justify-between rounded-xl border p-4">
               <Label>Dark Mode</Label>
-              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+              <Switch checked={darkMode} onCheckedChange={updateDarkMode} />
             </div>
           </TabsContent>
 
@@ -307,7 +327,7 @@ export default function SettingsDialog({ user, shop }) {
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           {isSaving ? "Saving..." : "Save Settings"}
         </Button> */}
-        {!isShopUser && (
+          {userRole === "admin" &&  (
           <Button
             onClick={saveSettings}
             className="w-full mt-4 gap-2"

@@ -133,7 +133,9 @@ export default function AdvancedSummaryDialog({ inventory }) {
         <Tabs defaultValue={shops[1]?.id} className="mt-6 h-full">
           <TabsList className="bg-transparent">
             {shops.map((s) => (
-              <TabsTrigger key={s.id} value={s.id} className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">
+              <TabsTrigger key={s.id} value={s.id} className="border-0 
+              dark:data-[state=active]:bg-input/0
+               transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >
                 {s.name}
               </TabsTrigger>
             ))}
@@ -174,13 +176,18 @@ export default function AdvancedSummaryDialog({ inventory }) {
                                       }`;
 
                                 return (
-                                  <Badge key={typeId} variant="secondary">
+                                  <div className="flex gap-1">
+
+                                  <Badge key={typeId} variant="outline">
                                     {coverTypeMap[typeId]} 
                                     <span>
-                                    ({data.qty}) 
+                                    {/* (₹{data.qty})  */}
                                     </span>
-                                    {priceLabel}
+                                   
                                   </Badge>
+                                  <Badge variant="outline"> ₹{data.qty}</Badge>
+                                  <Badge variant="outline"> {priceLabel}</Badge>
+                                  </div>
                                 );
                               }
                             )}

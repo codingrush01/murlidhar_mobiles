@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { db } from "@/utils/firebase";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 
-
-
 import {
   doc,
   onSnapshot,
@@ -184,6 +182,8 @@ export default function UserManagement({ shop }) {
               }
             />
           </div>
+          <div className="flex gap-2">
+
 
           <div>
             <Label>Role</Label>
@@ -197,10 +197,10 @@ export default function UserManagement({ shop }) {
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
+                {/* <SelectItem value="admin">Admin</SelectItem> */}
                 <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="viewer">Viewer</SelectItem>
+                {/* <SelectItem value="viewer">Viewer</SelectItem> */}
               </SelectContent>
             </Select>
           </div>
@@ -227,6 +227,7 @@ export default function UserManagement({ shop }) {
               </Select>
             </div>
           )}
+          </div>
 
           <div>
             <Label>Email</Label>

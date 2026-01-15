@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { auth } from './utils/firebase'; // Ensure your firebase path is correct
+import { auth, db } from './utils/firebase'; // Ensure your firebase path is correct
 import { onAuthStateChanged } from 'firebase/auth';
 import ShopCreation from './pages/ShopCreation'; // Import your new page
 import Login from './components/Login';
@@ -10,11 +10,30 @@ import Navbar from './components/Navbar';
 import { Toaster } from 'sonner';
 import StockEntry from './pages/StockEntry';
 import InventoryPage from './pages/Inventory';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 function App() {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [darkMode, setDarkMode] = useState(false);
+
+  // 🔹 Global Firestore listener
+  useEffect(() => {
+    const ref = doc(db, "settings", "global");
+    return onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        setDarkMode(!!snap.data().dark_mode);
+      }
+    });
+  }, []);
+
+  // 🔹 Apply shadcn dark class
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
 
   useEffect(() => {
     // Listen for auth state changes (login/logout/refresh)

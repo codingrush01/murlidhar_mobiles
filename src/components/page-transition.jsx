@@ -20,7 +20,7 @@ export default function PageTransition({ children }) {
     <>
       <div 
         ref={curtainRef}
-        className="fixed inset-0 z-[9999] bg-zinc-50 pointer-events-none origin-top"
+        className="fixed inset-0 z-[9999] bg-background pointer-events-none origin-top"
       />
       
       <div className="relative min-h-screen w-full">

@@ -333,6 +333,17 @@ export default function ShopCreation() {
   const [userShopId, setUserShopId] = useState(null);
 const [isShopUser, setIsShopUser] = useState(false);
 
+const [settings, setSettings] = useState({ shops_limit: 3 });
+
+useEffect(() => {
+  return onSnapshot(doc(db, "settings", "global"), (snap) => {
+    if (snap.exists()) setSettings(snap.data());
+  });
+}, []);
+const shopsLimit = settings?.shops_limit ?? 3;
+const reachedLimit = shops.length >= shopsLimit;
+
+
 useEffect(() => {
   const auth = getAuth();
 
@@ -453,8 +464,17 @@ useEffect(() => {
   };
 
   return (
-    <div ref={container} className="contauner-gsap p-8 max-w-7xl mx-auto space-y-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div ref={container} className="contauner-gsap ">
+      {reachedLimit && (
+        <div className="text-sm font-bold text-yellow-500 py-6 px-8 bg-yellow-500/10 flex items-center gap-2">
+          <AlertTriangle className="h-6 w-6 stroke-3" />
+          You have reached the maximum shop limit.
+        </div>
+      )}
+      <div className="p-8 max-w-7xl mx-auto space-y-10">
+
+      <div className="flex flex-col sm:flex-row md:items-center justify-between gap-4">
+        
         <div className="space-y-1">
           <h1 className="text-4xl font-bold tracking-tight">Shops</h1>
           <p className="text-muted-foreground">Manage your physical retail locations.</p>
@@ -463,18 +483,17 @@ useEffect(() => {
         <div className="flex gap-2">
 
         <Dialog open={open} onOpenChange={(val) => { if(!val) resetForm(); setOpen(val); }}>
-          {/* <DialogTrigger asChild>
-            <Button variant="default" className="px-4 gap-2 shadow-none  active:scale-95 transition-transform">
-              <Plus className="h-5 w-5" />
-              Add New Shop
-            </Button>
-          </DialogTrigger> */}
-          <DialogTrigger asChild disabled={isShopUser}>
-            <Button disabled={isShopUser}>
-              <Plus className="h-5 w-5" />
-              Add New Shop
-            </Button>
-          </DialogTrigger>
+        
+{!isShopUser && !reachedLimit && (
+  <DialogTrigger asChild>
+    <Button className="px-4 gap-2 shadow-none active:scale-95 transition-transform">
+      <Plus className="h-5 w-5" />
+      <p className="hidden md:block">
+      Add New Shop
+     </p>
+    </Button>
+  </DialogTrigger>
+)}
 
           <DialogContent className="sm:max-w-[425px] border-none shadow-2xl backdrop-blur-xl bg-background/90">
             <DialogHeader>
@@ -603,5 +622,7 @@ useEffect(() => {
         </div>
       )}
     </div>
+    </div>
+
   );
 }

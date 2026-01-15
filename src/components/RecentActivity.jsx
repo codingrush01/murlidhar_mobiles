@@ -117,7 +117,7 @@ function formatUpdatedBy(updatedBy) {
 
       <div className="flex-1">
         <p className="text-sm font-medium">Stock updated</p>
-        <p className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           Model:{" "}
           <span className="font-medium">
             {modelMap[a.model_id] || "Unknown"}
@@ -127,7 +127,7 @@ function formatUpdatedBy(updatedBy) {
             {shopMap[a.shop_id] || "Unknown"}
           </span>
           <p className="text-xs text-muted-foreground flex items-center gap-1 justify-start">{"updated by:" + formatUpdatedBy(a.updatedBy)}</p>
-        </p>
+        </div>
       </div>
 
       <div className="text-right">

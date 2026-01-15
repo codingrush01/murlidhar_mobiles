@@ -7,6 +7,7 @@ import {
   Trash2,
   Check,
   ChevronsUpDown,
+  PlusIcon,
 } from "lucide-react";
 
 import { db } from "@/utils/firebase";
@@ -56,6 +57,18 @@ import { cn } from "@/lib/utils";
 
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { where, getDocs } from "firebase/firestore";
+
+function buildSearchKey({
+  brand,
+  model,
+  type,
+  shop,
+}) {
+  return `${brand} ${model} ${type} ${shop}`
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 
 export default function StockEntry() {
@@ -261,6 +274,18 @@ useEffect(() => {
     const inventoryId = `${selectedShop}_${model.id}_${selectedCat}`;
     const invRef = doc(db, "inventory", inventoryId);
 
+     /* 🔥 ADD THIS BLOCK HERE */
+      const brandName =
+      brands.find(b => b.id === selectedBrand)?.name || "";
+
+      const typeName =
+      cats.find(c => c.id === selectedCat)?.name || "";
+
+      const shopName =
+      shops.find(s => s.id === selectedShop)?.shopName || "";
+
+      const modelDisplayName = modelName;
+      
     batch.set(
       invRef,
       {
@@ -270,6 +295,11 @@ useEffect(() => {
         type_id: selectedCat,
         price: Number(price),
         qty: Number(qty),
+          /* 🔥 ADD THIS LINE */
+        searchKey: `${brandName} ${modelDisplayName} ${typeName} ${shopName}`
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim(),
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -298,7 +328,7 @@ useEffect(() => {
       {/* <Label>Select Shop</Label> */}
       <Dialog open={open} onOpenChange={setOpen}>
   <DialogTrigger asChild>
-  <Button variant="default" className="px-4 gap-2 shadow-none  active:scale-95 transition-transform">
+  <Button variant="outline" className="px-4 gap-2 shadow-none  active:scale-95 transition-transform">
   <Plus className="h-5 w-5" />
       Categories
     </Button>
@@ -307,21 +337,29 @@ useEffect(() => {
   <DialogContent className="sm:max-w-full rounded-none h-full block max-w-[100%] w-full">
     <DialogTitle className=" h-fit">Categories & Brands</DialogTitle>
 
-    <Tabs defaultValue="cats" className="mt-4 w-full md:w-fit">
+    <Tabs defaultValue="cats" className="mt-4 w-full">
       <TabsList className="grid grid-cols-2 gap-2 bg-transparent">
-        <TabsTrigger value="cats" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Cover Types</TabsTrigger>
-        <TabsTrigger value="brands" className="transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50 pt-0.5">Brands</TabsTrigger>
+        <TabsTrigger value="cats" className="border-0 
+           dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >Cover Types</TabsTrigger>
+        <TabsTrigger value="brands" className="border-0 
+           dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >Brands</TabsTrigger>
       </TabsList>
 
       {/* -------- COVER TYPES -------- */}
-      <TabsContent value="cats" className="space-y-4">
+      <TabsContent value="cats" className="space-y-4 ">
         <div className="flex gap-2">
           <Input
             value={inputCat}
             onChange={(e) => setInputCat(e.target.value)}
+            className="flex-1"
             placeholder="New cover type"
           />
-          <Button onClick={() => handleCreateAttr("cats")}>Add</Button>
+          <Button onClick={() => handleCreateAttr("cats")}>
+          <PlusIcon />
+            Add
+          </Button>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -349,14 +387,18 @@ useEffect(() => {
       </TabsContent>
 
       {/* -------- BRANDS -------- */}
-      <TabsContent value="brands" className="space-y-4">
+      <TabsContent value="brands" className="space-y-4  ">
         <div className="flex gap-2">
           <Input
             value={inputBrand}
             onChange={(e) => setInputBrand(e.target.value)}
             placeholder="New brand"
+            className="flex-1"
           />
-          <Button onClick={() => handleCreateAttr("brands")}>Add</Button>
+          <Button onClick={() => handleCreateAttr("brands")}>
+          <PlusIcon/>
+            Add
+          </Button>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -391,16 +433,7 @@ useEffect(() => {
           <div className="space-y-6 w-full md:w-md mx-auto">
 
       <div className="flex gap-2 flex-wrap">
-        {/* {shops.map(s => (
-          <Button
-          className="rounded-3xl shadow-none"
-            key={s.id}
-            variant={selectedShop === s.id ? "default" : "outline"}
-            onClick={() => setSelectedShop(s.id)}
-          >
-            {s.shopName}
-          </Button>
-        ))} */}
+      
         {shops.map(s => (
   <Button
     key={s.id}
