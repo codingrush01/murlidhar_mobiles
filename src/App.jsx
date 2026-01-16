@@ -12,7 +12,6 @@ import { Toaster } from 'sonner';
 import StockEntry from './pages/StockEntry';
 import InventoryPage from './pages/Inventory';
 import { doc, onSnapshot } from 'firebase/firestore';
-import ForgotPassword from './pages/ForgotPWD';
 
 function App() {
   const location = useLocation();

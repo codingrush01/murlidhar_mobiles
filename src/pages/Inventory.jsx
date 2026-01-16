@@ -2,6 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/utils/firebase";
+import { Trash2 } from "lucide-react";
+import { deleteDoc } from "firebase/firestore";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
+
 import {
   collection,
   query,
@@ -55,6 +65,8 @@ export default function InventoryPage() {
   const [brandMap, setBrandMap] = useState({});
   const [types, setTypes] = useState([]); 
   const [typeMap, setTypeMap] = useState({});
+
+  
   // --- Auth & User Role ---
   useEffect(() => {
     const auth = getAuth();
@@ -89,6 +101,38 @@ export default function InventoryPage() {
     });
     return () => unsub();
   }, []);
+  useEffect(() => {
+    if (!userRole) return;
+  
+    let constraints = [];
+  
+    if (userRole === "owner" && userShopId) {
+      constraints.push(where("shop_id", "==", userShopId));
+    }
+  
+    constraints.push(orderBy("updatedAt", "desc"));
+    constraints.push(limit(PAGE_SIZE));
+  
+    const q = query(collection(db, "inventory"), ...constraints);
+  
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+      }));
+  
+      // 🔥 LIVE UPDATE ONLY FIRST PAGE
+      setInventory(prev => {
+        const rest = prev.slice(PAGE_SIZE);
+        return [...data, ...rest];
+      });
+  
+      setLastDoc(snap.docs[snap.docs.length - 1] || null);
+    });
+  
+    return () => unsub();
+  }, [userRole, userShopId]);
+  
 
   // --- Maps ---
   useEffect(() => {
@@ -160,6 +204,11 @@ export default function InventoryPage() {
       updatedBy: updater,
     });
   };
+  const deleteStock = async (id) => {
+    if (!confirm("Delete this batch permanently?")) return;
+    await deleteDoc(doc(db, "inventory", id));
+  };
+  
   
   
   const fetchInventory = async (reset = false) => {
@@ -262,16 +311,16 @@ export default function InventoryPage() {
           scrollableTarget="scrollableDiv"
         >
           {/* HEADER ROW - Desktop */}
-          <div className="hidden lg:grid grid-cols-9 text-xs text-muted-foreground px-2 mb-2 gap-2 text-center">
+          <div className="hidden lg:grid grid-cols-10 text-xs text-muted-foreground mb-2 gap-2 text-center ">
             <div>Brand</div>
             <div>Model</div>
             <div>cover</div>
             <div>Store</div>
+            <div>batch</div>
             <div>Price</div>
-            <div className="text-center">Qty</div>
+            <div className="text-center col-span-2">Qty</div>
             <div className="text-center">Total</div>
-            <div className="text-center">Status</div>
-            <div className="text-center">Reorder</div>
+            <div className="text-center">More</div>
           </div>
 
           <div className="space-y-2">
@@ -284,7 +333,7 @@ export default function InventoryPage() {
               return (
                 <div key={i.id}>
                   {/* Desktop / Tablet */}
-                  <div className="hidden lg:grid grid-cols-9 items-center gap-2 border-b border-border/50 p-3 shadow-none text-center">
+                  <div className="hidden lg:grid grid-cols-10 items-center gap-2 border-b border-border/50 p-3 shadow-none text-center relative">
                     <div>{brandMap[i.brand_id] ?? "—"}</div>
                     <div className="font-medium">{modelMap[i.model_id]}</div>
                     {/* cover type */}
@@ -292,6 +341,9 @@ export default function InventoryPage() {
                     <div>{typeMap[i.type_id] ?? "—"}</div>
 
                     <div>{shopMap[i.shop_id]}</div>
+                    <Badge variant="secondary" className="py-1.5">
+                    Batch {i.batch_no}
+                    </Badge>
 
                     <Input
                       type="number"
@@ -301,46 +353,91 @@ export default function InventoryPage() {
                     />
 
           
-<div className="flex items-center justify-end flex-col lg:flex-row pr-4 gap-[0.5em] md:gap-2">
-             <Button
-               size="icon"
-               variant="outline"
-               disabled={i.qty === 0}
-               onClick={() => updateField(i.id, { qty: i.qty - 1 })}
-             >
-               <Minus className="h-4 w-4" />
-             </Button>
+    <div className="flex items-center justify-center flex-col lg:flex-row pr-4 gap-[0.5em] md:gap-2  col-span-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  disabled={i.qty === 0}
+                  onClick={() => updateField(i.id, { qty: i.qty - 1 })}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
 
-             <span className="w-8 text-center font-bold ">{i.qty}</span>
+                <span className="w-8 text-center font-bold ">{i.qty}</span>
 
-             <Button
-               size="icon"
-               onClick={() => updateField(i.id, { qty: i.qty + 1 })}
-             >
-              <Plus className="h-4 w-4" />
-             </Button>
-           </div>
-                    <div className="flex items-center justify-center">
-                      <span className="font-semibold tabular-nums">₹{total}</span>
-                    </div>
+                <Button
+                  size="icon"
+                  onClick={() => updateField(i.id, { qty: i.qty + 1 })}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
 
-                    <div className="text-center">
-                      <Badge
-                        className={low ? "bg-red-500/10 text-red-600" : "bg-emerald-500/10 text-emerald-600"}
-                      >
-                        {low ? "Low Stock" : "Healthy"}
-                      </Badge>
-                    </div>
+                        <div className="flex items-center justify-center">
+                          <span className="font-semibold tabular-nums">₹{total}</span>
+                        </div>
 
-                    <div className="text-center">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => setReorderItem(i)}
-                      >
-                        <PackagePlus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                     {/* Stock status indicator */}
+                    <div
+                      className={`
+                        absolute left-0 top-0 h-full w-[3px]
+                        ${low ? "bg-red-500" : "bg-emerald-500"}
+                      `}
+                    />
+
+
+                        <div className="text-center">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreVertical className="h-4 w-4  text-primary"  />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            className="
+                            group
+                          text-muted-foreground
+                          hover:text-primary
+                          hover:bg-primary/10
+                          focus:text-primary
+                          focus:bg-primary/10
+                            "
+                            onClick={() => setReorderItem(i)}
+                          >
+                            <PackagePlus className="
+                             h-4 w-4 mr-2
+                          text-muted-foreground
+                          group-hover:text-primary
+                          group-focus:text-primary
+                            " />
+                            Sotck Adjustment batch
+                          </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => deleteStock(i.id)}
+                          className="
+                          group
+                          text-muted-foreground
+                          hover:text-destructive
+                          hover:bg-destructive/10
+                          focus:text-destructive
+                          focus:bg-destructive/10
+                                                "
+                          >
+                          <Trash2 className=" h-4 w-4 mr-2
+                          text-muted-foreground
+                          group-hover:text-destructive
+                          group-focus:text-destructive" />
+                          Delete Batch
+                        </DropdownMenuItem>
+                         
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+              
+                        </div>
+
+
                   </div>
 
                   {/* Mobile / Tablet card */}
@@ -356,15 +453,21 @@ export default function InventoryPage() {
                       <div className="flex gap-1">
                         <span>{modelMap[i.model_id]}</span>
                         <Badge className="w-fit py-1 h-fit " variant="outline">{typeMap[i.type_id]}</Badge>
+                        <Badge className="w-fit py-1 h-fit " variant="outline">{[i.batch_no]}</Badge>
                       </div>
+                      <div>
+
+                      price:
                       <Input
                         type="number"
-                        className="h-8 w-20"
+                        className="ml-1 h-8 w-20"
                         value={i.price}
                         onChange={(e) => updateField(i.id, { price: Number(e.target.value) })}
                       />
+                      </div>
+
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center ">
                       <div className="flex items-center gap-2">
                         <Button
                           size="icon"
@@ -382,12 +485,14 @@ export default function InventoryPage() {
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 ">
                         <Badge
                           className={low ? "bg-red-500/10 text-red-600" : "bg-emerald-500/10 text-emerald-600"}
                         >
                           {low ? "Low Stock" : "Healthy"}
                         </Badge>
+                        <div className="h-4 bg-secondary w-px mx-1 block" />
+
                         <Button
                           size="icon"
                           variant="outline"
@@ -395,6 +500,14 @@ export default function InventoryPage() {
                         >
                           <PackagePlus className="h-4 w-4" />
                         </Button>
+                        <Button
+                        size="icon"
+                        variant="destructive"
+                        onClick={() => deleteStock(i.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+
                       </div>
                     </div>
                   </div>

@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-
 const auth = getAuth();
 
 async function createAuthUser(email, password) {
@@ -40,12 +39,12 @@ async function createAuthUser(email, password) {
 
     console.log("Auth user created:", userCredential.user.uid);
     return userCredential.user;
-
   } catch (error) {
     console.error("Auth error:", error.message);
     throw error;
   }
 }
+
 export default function UserManagement({ shop }) {
   const auth = getAuth();
   const authUser = auth.currentUser;
@@ -54,6 +53,7 @@ export default function UserManagement({ shop }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [usedEmails, setUsedEmails] = useState([]);
   const [shops, setShops] = useState([]);
 
   const [form, setForm] = useState({
@@ -74,12 +74,26 @@ export default function UserManagement({ shop }) {
     });
   }, [authUser?.uid]);
 
+  /* 🧠 Load used emails from users table */
+  useEffect(() => {
+    if (userDoc?.role !== "admin") return;
+
+    const q = query(collection(db, "users"));
+    return onSnapshot(q, (snap) => {
+      const emails = snap.docs
+        .map((d) => d.data().email)
+        .filter(Boolean);
+
+      setUsedEmails(emails);
+    });
+  }, [userDoc?.role]);
+
   /* 🏪 Load shops (admin only) */
   useEffect(() => {
     if (userDoc?.role !== "admin") return;
 
     return onSnapshot(collection(db, "shops"), (snap) => {
-      setShops(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setShops(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
   }, [userDoc?.role]);
 
@@ -89,13 +103,13 @@ export default function UserManagement({ shop }) {
   useEffect(() => {
     if (form.role !== "owner") return;
 
-    const selected = shops.find(s => s.id === form.shopId);
+    const selected = shops.find((s) => s.id === form.shopId);
     if (selected?.email) {
-      setForm(f => ({ ...f, email: selected.email }));
+      setForm((f) => ({ ...f, email: selected.email }));
     }
   }, [form.role, form.shopId, shops]);
 
-  /* ➕ Create user (Firestore only) */
+  /* ➕ Create user */
   const createUser = async () => {
     if (!isAdmin) return;
 
@@ -112,37 +126,80 @@ export default function UserManagement({ shop }) {
     try {
       setSaving(true);
 
-      /* 🔍 Check duplicate email */
-      const q = query(
+      /* 🔍 Duplicate email check */
+      const emailQuery = query(
         collection(db, "users"),
         where("email", "==", form.email)
       );
-      const existing = await getDocs(q);
+      const emailSnap = await getDocs(emailQuery);
 
-      if (!existing.empty) {
+      if (!emailSnap.empty) {
         toast.error("User with this email already exists");
-        setSaving(false);
         return;
       }
+
+      /* 🔒 Owner limit */
+      if (form.role === "owner") {
+        const ownerQuery = query(
+          collection(db, "users"),
+          where("role", "==", "owner")
+        );
+        const ownerSnap = await getDocs(ownerQuery);
+
+        if (ownerSnap.size >= 3) {
+          toast.error("You have already created 3 shop owners");
+          return;
+        }
+      }
+
+      /* 🔒 Staff limit */
+      // if (form.role === "staff") {
+      //   const staffQuery = query(
+      //     collection(db, "users"),
+      //     where("role", "==", "staff"),
+      //     where("shopId", "==", shop?.id)
+      //   );
+      //   const staffSnap = await getDocs(staffQuery);
+
+      //   if (!staffSnap.empty) {
+      //     toast.error("You have already created 3 shop owners");
+      //     return;
+      //   }
+      // }
+
+      /* 🔒 Optional: global staff limit */
+if (form.role === "staff") {
+  const staffQuery = query(
+    collection(db, "users"),
+    where("role", "==", "staff")
+  );
+  const staffSnap = await getDocs(staffQuery);
+
+  if (staffSnap.size >= 10) {
+    toast.error("Maximum staff limit reached");
+    return;
+  }
+}
 
       await addDoc(collection(db, "users"), {
         name: form.name,
         email: form.email,
         role: form.role,
-        shopId:
-          form.role === "admin"
-            ? null
-            : form.role === "owner"
-            ? form.shopId
-            : shop?.id ?? null,
-        status: "pending", // ready for auth creation later
+        shopId: form.role === "owner" ? form.shopId : null,
+
+        // shopId:
+        //   form.role === "owner"
+        //     ? form.shopId
+        //     : form.role === "staff"
+        //     ? shop?.id ?? null
+        //     : null,
+        status: "pending",
         createdAt: serverTimestamp(),
       });
 
       await createAuthUser(form.email, "123456");
 
-
-      toast.success("User created (Auth pending)");
+      toast.success("User created successfully");
 
       setForm({
         name: "",
@@ -160,89 +217,97 @@ export default function UserManagement({ shop }) {
 
   if (loading) return <p className="text-sm">Loading user…</p>;
 
+  /* ✅ FILTER SHOPS WHOSE EMAIL IS ALREADY USED */
+  const availableShops = shops.filter(
+    (s) => s.email && !usedEmails.includes(s.email)
+  );
+
   return (
     <div className="space-y-4">
-      {/* CURRENT USER */}
       <div className="rounded-xl border p-4 text-sm space-y-1">
         <p>Email: <strong>{userDoc?.email}</strong></p>
         <p>Role: <strong>{userDoc?.role}</strong></p>
       </div>
 
-      {/* ADMIN ONLY */}
       {isAdmin && (
-        <div className="rounded-xl border p-4 space-y-4">
-          <p className="font-medium">Create User</p>
+        <div className="rounded-xl border p-6 space-y-6">
+          <h2 className="text-lg font-semibold">Create User</h2>
 
-          <div>
-            <Label>Name</Label>
-            <Input
-              value={form.name}
-              onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
-              }
-            />
-          </div>
-          <div className="flex gap-2">
-
-
-          <div>
-            <Label>Role</Label>
-            <Select
-              value={form.role}
-              onValueChange={(value) =>
-                setForm({ ...form, role: value, shopId: "" })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* <SelectItem value="admin">Admin</SelectItem> */}
-                <SelectItem value="owner">Owner</SelectItem>
-                <SelectItem value="staff">Staff</SelectItem>
-                {/* <SelectItem value="viewer">Viewer</SelectItem> */}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {form.role === "owner" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Shop (Owner)</Label>
+              <Label>Name</Label>
+              <Input
+                value={form.name}
+                onChange={(e) =>
+                  setForm({ ...form, name: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label>Role</Label>
               <Select
-                value={form.shopId}
+                value={form.role}
                 onValueChange={(value) =>
-                  setForm({ ...form, shopId: value })
+                  setForm({ ...form, role: value, shopId: "" })
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select shop email" />
+                  <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {shops.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.email}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          )}
+
+            {form.role === "owner" && (
+              <div>
+                <Label>Shop (Owner)</Label>
+                <Select
+                  value={form.shopId}
+                  onValueChange={(value) =>
+                    setForm({ ...form, shopId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select shop email" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableShops.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        All shop emails are already used
+                      </div>
+                    )}
+
+                    {availableShops.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div>
+              <Label>Email</Label>
+              <Input
+                value={form.email}
+                disabled={form.role === "owner"}
+                onChange={(e) =>
+                  setForm({ ...form, email: e.target.value })
+                }
+              />
+            </div>
           </div>
 
-          <div>
-            <Label>Email</Label>
-            <Input
-              value={form.email}
-              disabled={form.role === "owner"}
-              onChange={(e) =>
-                setForm({ ...form, email: e.target.value })
-              }
-            />
+          <div className="flex justify-end">
+            <Button onClick={createUser} disabled={saving}>
+              {saving ? "Creating..." : "Create User"}
+            </Button>
           </div>
-
-          <Button onClick={createUser} disabled={saving}>
-            {saving ? "Creating..." : "Create User"}
-          </Button>
         </div>
       )}
     </div>

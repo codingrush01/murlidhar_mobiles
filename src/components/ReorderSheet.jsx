@@ -20,6 +20,7 @@ import { toast } from "sonner";
 export function ReorderSheet({
   item,
   brandMap,
+  batch_no,
   modelMap,
   shopMap,
   onClose,
@@ -55,11 +56,12 @@ export function ReorderSheet({
     <Sheet open onOpenChange={onClose}>
       <SheetContent side="right" className="w-full max-w-[400px]">
         <SheetHeader>
-          <SheetTitle>Reorder Stock</SheetTitle>
+          <SheetTitle>Stock Adjustment</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-4 px-4">
+        <div className="mt-1 space-y-4 px-4">
           {/* READ ONLY INFO */}
+          <Info label="batch_no" value={item.batch_no} />
           <Info label="Brand" value={brandMap[item.brand_id]} />
           <Info label="Model" value={modelMap[item.model_id]} />
           <Info label="Store" value={shopMap[item.shop_id]} />
@@ -104,10 +106,12 @@ export function ReorderSheet({
 
             {/* FINAL QTY */}
             <Alert>
-            <AlertDescription className="text-xs flex justify-between items-center">
-                <span>
-                <AlertTriangleIcon fill="yellow" /> Final quantity after reorder
+            <AlertDescription className="text-xs flex-col flex justify-start items-start gap-1">
+                <span className="capitalize flex items-center gap-2">
+                <AlertTriangleIcon fill="yellow" size={20} /> Final quantity after stock Adjustment
                 </span>
+                <div className="bg-secondary h-0.5 rounded-4xl mb-2 w-full block"></div>
+                <span>old Stock is <strong>{item.qty} </strong> and new is <strong>{Number(addQty) || 0} {" "} </strong> so overall is <strong>{item.qty + (Number(addQty) || 0)}</strong> </span>
                 <span className="font-semibold">
                 {item.qty} + {Number(addQty) || 0} ={" "}
                 <span className="text-primary">

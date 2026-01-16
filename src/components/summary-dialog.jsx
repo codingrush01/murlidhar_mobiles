@@ -15,10 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Search } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "./ui/input";
 
 export default function AdvancedSummaryDialog({ inventory }) {
   const [shops, setShops] = useState([]);
+  const [search, setSearch] = useState("");
   const [brandMap, setBrandMap] = useState({});
   const [modelMap, setModelMap] = useState({});
   const [coverTypeMap, setCoverTypeMap] = useState({});
@@ -103,11 +106,14 @@ export default function AdvancedSummaryDialog({ inventory }) {
           models[modelId][typeId] = {
             qty: 0,
             prices: new Set(),
+            batches: new Set(),
           };
         }
 
         models[modelId][typeId].qty += item.qty;
         models[modelId][typeId].prices.add(item.price);
+        models[modelId][typeId].batches.add(item.batch_no); 
+
       });
 
       result[shopId] = models;
@@ -119,7 +125,7 @@ export default function AdvancedSummaryDialog({ inventory }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2 shadow-none active:scale-95 transition-transform">
           <BarChart3 className="h-4 w-4" />
           <p className="hidden sm:block">Advanced Summary</p>
         </Button>
@@ -129,8 +135,17 @@ export default function AdvancedSummaryDialog({ inventory }) {
         <DialogHeader>
           <DialogTitle>Inventory Summary</DialogTitle>
         </DialogHeader>
+         <div className="relative flex-1 mt-4">
+        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search brand, model, batch..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value.toLowerCase())}
+          className="pl-9 shadow-none"
+        />
+        </div>
 
-        <Tabs defaultValue={shops[1]?.id} className="mt-6 h-full">
+        <Tabs defaultValue={shops[1]?.id} className="mt-1 h-full">
           <TabsList className="bg-transparent">
             {shops.map((s) => (
               <TabsTrigger key={s.id} value={s.id} className="border-0 
@@ -143,17 +158,29 @@ export default function AdvancedSummaryDialog({ inventory }) {
 
           {shops.map((s) => (
             <TabsContent key={s.id} value={s.id}>
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2"> */}
+              <ScrollArea className="h-[70vh] pr-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
                 {summaryByShop[s.id] &&
-                  Object.entries(summaryByShop[s.id]).map(
+                Object.entries(summaryByShop[s.id])
+                .filter(([modelId]) => {
+                  const model = modelMap[modelId];
+                  const brand = brandMap[model?.brandId] || "";
+                  return (
+                    model?.name?.toLowerCase().includes(search) ||
+                    brand.toLowerCase().includes(search)
+                  );
+                }).map(
+                  // Object.entries(summaryByShop[s.id]).map(
                     ([modelId, covers]) => {
                       const model = modelMap[modelId];
 
                       return (
                         <div
                           key={modelId}
-                          className="rounded-lg border p-4 space-y-2 bg-muted/20"
+                          className="rounded-lg border p-4 space-y-2 bg-muted/20 relative"
                         >
+
                           <p className="text-sm text-muted-foreground">
                             {brandMap[model?.brandId] || "—"}
                           </p>
@@ -177,16 +204,17 @@ export default function AdvancedSummaryDialog({ inventory }) {
 
                                 return (
                                   <div className="flex gap-1">
-
-                                  <Badge key={typeId} variant="outline">
+                                  <Badge key={typeId} variant="ghost" className="py-1.5 px-1.5">
+                                    <span className="pl-1">
                                     {coverTypeMap[typeId]} 
-                                    <span>
-                                    {/* (₹{data.qty})  */}
                                     </span>
+                                  <Badge variant=""> {data.qty}</Badge>
+                                  <Badge variant=""> {priceLabel}</Badge>
+                                  <Badge variant="" className="leading-[1.2]">
+                                    Batche No: {[...data.batches].join(", ")}
+                                  </Badge>
                                    
                                   </Badge>
-                                  <Badge variant="outline"> ₹{data.qty}</Badge>
-                                  <Badge variant="outline"> {priceLabel}</Badge>
                                   </div>
                                 );
                               }
@@ -197,6 +225,7 @@ export default function AdvancedSummaryDialog({ inventory }) {
                     }
                   )}
               </div>
+              </ScrollArea>
             </TabsContent>
           ))}
         </Tabs>

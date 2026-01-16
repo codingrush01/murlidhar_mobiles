@@ -73,6 +73,9 @@ function buildSearchKey({
 
 export default function StockEntry() {
   const [open, setOpen] = useState(false);
+  const [batchNo, setBatchNo] = useState("");
+  const [showBatches, setShowBatches] = useState(false);
+
 
   // DATA
   const [cats, setCats] = useState([]);
@@ -100,6 +103,10 @@ export default function StockEntry() {
 
   const [userShopId, setUserShopId] = useState(null);
 const [isShopUser, setIsShopUser] = useState(false);
+
+const [batchExists, setBatchExists] = useState(false);
+const [existingBatchItem, setExistingBatchItem] = useState(null);
+
 
 
 useEffect(() => {
@@ -187,6 +194,20 @@ useEffect(() => {
       m.brandId === selectedBrand &&
       m.name.toLowerCase().includes(modelName.toLowerCase())
   );
+  // suggest batch
+  const filteredBatches = inventory.filter(i => {
+    const model = models.find(m => m.id === i.model_id);
+  
+    return (
+      i.shop_id === selectedShop &&
+      i.brand_id === selectedBrand &&
+      i.type_id === selectedCat &&
+      model &&
+      model.name.toLowerCase() === modelName.toLowerCase() &&
+      i.batch_no.toLowerCase().includes(batchNo.toLowerCase())
+    );
+  });
+  
 
   /* -------------------- AUTO FETCH INVENTORY -------------------- */
   useEffect(() => {
@@ -213,6 +234,75 @@ useEffect(() => {
     }
   }, [selectedShop, selectedBrand, modelName, selectedCat]);
 
+  useEffect(() => {
+    if (!batchNo || !selectedShop || !selectedBrand || !modelName || !selectedCat) {
+      setBatchExists(false);
+      setExistingBatchItem(null);
+      return;
+    }
+  
+    const model = models.find(
+      m =>
+        m.brandId === selectedBrand &&
+        m.name.toLowerCase() === modelName.toLowerCase()
+    );
+    if (!model) return;
+  
+    const inventoryId = `${selectedShop}_${model.id}_${selectedCat}_${batchNo}`;
+    const found = inventory.find(i => i.id === inventoryId);
+  
+    if (found) {
+      setBatchExists(true);
+      setExistingBatchItem(found);
+      setExistingInventory(found);
+      setPrice(found.price);
+    } else {
+      setBatchExists(false);
+      setExistingBatchItem(null);
+    }
+  }, [batchNo, selectedShop, selectedBrand, modelName, selectedCat, inventory, models]);
+  
+  // useEffect(() => {
+  //   if (
+  //     !batchNo ||
+  //     !selectedShop ||
+  //     !selectedBrand ||
+  //     !modelName ||
+  //     !selectedCat
+  //   ) {
+  //     setBatchExists(false);
+  //     setExistingBatchItem(null);
+  //     return;
+  //   }
+  
+  //   const model = models.find(
+  //     m =>
+  //       m.brandId === selectedBrand &&
+  //       m.name.toLowerCase() === modelName.toLowerCase()
+  //   );
+  //   if (!model) return;
+  
+  //   const inventoryId = `${selectedShop}_${model.id}_${selectedCat}_${batchNo}`;
+  
+  //   const found = inventory.find(i => i.id === inventoryId);
+  
+  //   if (found) {
+  //     setBatchExists(true);
+  //     setExistingBatchItem(found);
+  //   } else {
+  //     setBatchExists(false);
+  //     setExistingBatchItem(null);
+  //   }
+  // }, [
+  //   batchNo,
+  //   selectedShop,
+  //   selectedBrand,
+  //   modelName,
+  //   selectedCat,
+  //   inventory,
+  //   models,
+  // ]);
+  
   /* -------------------- ATTR CRUD -------------------- */
   const handleCreateAttr = async (type) => {
     const name = type === "cats" ? inputCat : inputBrand;
@@ -241,81 +331,12 @@ useEffect(() => {
     toast.success("Deleted");
   };
 
-  /* -------------------- SAVE LOGIC -------------------- */
-  // const handleSaveStock = async () => {
-  //   if (isShopUser && selectedShop !== userShopId) {
-  //     return toast.error("You cannot add inventory for another shop");
-  //   }
-
-  //   if (!selectedShop || !selectedBrand || !modelName || !selectedCat || !price || !qty) {
-  //     return toast.error("Complete all fields");
-  //   }
-
-
-  //   const batch = writeBatch(db);
-
-  //   let model = models.find(
-  //     m =>
-  //       m.brandId === selectedBrand &&
-  //       m.name.toLowerCase() === modelName.toLowerCase()
-  //   );
-
-  //   if (!model) {
-  //     const modelRef = doc(collection(db, "phone_models"));
-  //     model = { id: modelRef.id };
-
-  //     batch.set(modelRef, {
-  //       name: modelName,
-  //       normalizedName: modelName.toLowerCase(),
-  //       brandId: selectedBrand,
-  //       createdAt: serverTimestamp(),
-  //     });
-  //   }
-
-  //   const inventoryId = `${selectedShop}_${model.id}_${selectedCat}`;
-  //   const invRef = doc(db, "inventory", inventoryId);
-
-  //    /* 🔥 ADD THIS BLOCK HERE */
-  //     const brandName =
-  //     brands.find(b => b.id === selectedBrand)?.name || "";
-
-  //     const typeName =
-  //     cats.find(c => c.id === selectedCat)?.name || "";
-
-  //     const shopName =
-  //     shops.find(s => s.id === selectedShop)?.shopName || "";
-
-  //     const modelDisplayName = modelName;
-      
-  //   batch.set(
-  //     invRef,
-  //     {
-  //       shop_id: selectedShop,
-  //       brand_id: selectedBrand,
-  //       model_id: model.id,
-  //       type_id: selectedCat,
-  //       price: Number(price),
-  //       qty: Number(qty),
-  //         /* 🔥 ADD THIS LINE */
-  //       searchKey: `${brandName} ${modelDisplayName} ${typeName} ${shopName}`
-  //       .toLowerCase()
-  //       .replace(/\s+/g, " ")
-  //       .trim(),
-  //       updatedAt: serverTimestamp(),
-  //     },
-  //     { merge: true }
-  //   );
-
-  //   await batch.commit();
-  //   toast.success(existingInventory ? "Inventory updated" : "Inventory created");
-
-  //   setModelName("");
-  //   setPrice("");
-  //   setQty("");
-  //   setSelectedCat("");
-  // };
 
   const handleSaveStock = async () => {
+    if (!batchNo.trim()) {
+      return toast.error("Batch number required");
+    }
+    
     if (isShopUser && selectedShop !== userShopId) {
       return toast.error("You cannot add inventory for another shop");
     }
@@ -345,7 +366,10 @@ useEffect(() => {
       });
     }
   
-    const inventoryId = `${selectedShop}_${model.id}_${selectedCat}`;
+    // const inventoryId = `${selectedShop}_${model.id}_${selectedCat}`;
+    const inventoryId =
+  `${selectedShop}_${model.id}_${selectedCat}_${batchNo}`;
+
     const invRef = doc(db, "inventory", inventoryId);
   
     // Build display names for searchKey
@@ -374,6 +398,7 @@ useEffect(() => {
     batch.set(
       invRef,
       {
+        batch_no: batchNo,
         shop_id: selectedShop,
         brand_id: selectedBrand,
         model_id: model.id,
@@ -401,6 +426,8 @@ useEffect(() => {
     setSelectedCat("");
     setExistingInventory(null);
   };
+
+
   
   /* -------------------- UI -------------------- */
   return (
@@ -520,23 +547,79 @@ useEffect(() => {
 
           <div className="space-y-6 w-full md:w-md mx-auto">
 
-      <div className="flex gap-2 flex-wrap">
-      
-        {shops.map(s => (
-  <Button
-    key={s.id}
-    className="rounded-3xl shadow-none"
-    variant={selectedShop === s.id ? "default" : "outline"}
-    disabled={isShopUser}
-    onClick={() => setSelectedShop(s.id)}
-  >
-    {s.shopName}
-  </Button>
-))}
+            <div className="flex gap-2 flex-wrap">
+            
+              {shops.map(s => (
+                <Button
+                  key={s.id}
+                  className="rounded-3xl shadow-none"
+                  variant={selectedShop === s.id ? "default" : "outline"}
+                  disabled={isShopUser}
+                  onClick={() => setSelectedShop(s.id)}
+                >
+                  {s.shopName}
+                </Button>
+              ))}
 
-      </div>
+            </div>
+            {/* <Input
+                value={batchNo}
+                onChange={(e) => setBatchNo(e.target.value)}
+                placeholder="Batch Number (e.g. B-001)"
+              /> */}
+          {/* <Input
+            value={batchNo}
+            onChange={(e) => setBatchNo(e.target.value)}
+            placeholder="Batch Number (e.g. B-001)"
+          /> */}
+  <div className="relative">
+  <Input
+    value={batchNo}
+    onChange={(e) => {
+      setBatchNo(e.target.value);
+      setShowBatches(true);
+    }}
+    onFocus={() => setShowBatches(true)}
+    placeholder="Batch Number (e.g. B-001)"
+  />
+
+  {showBatches && batchNo && filteredBatches.length > 0 && (
+    <div className="absolute z-20 mt-1 bg-background border w-full rounded-md shadow max-h-48 overflow-auto">
+      {filteredBatches.map((b) => (
+        <button
+          key={b.id}
+          className="block w-full px-3 py-2 text-left hover:bg-muted/10"
+          onClick={() => {
+            setBatchNo(b.batch_no);
+            setExistingInventory(b);
+            setPrice(b.price);
+            setShowBatches(false);
+          }}
+        >
+          {b.batch_no}
+          <span className="ml-2 text-xs text-muted-foreground">
+            (Qty: {b.qty})
+          </span>
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+
+
+          {/* {batchExists && (
+            <p className="text-sm text-amber-600 mt-1">
+              ⚠️ This batch already exists
+              <span className="block text-xs text-muted-foreground">
+                Existing Qty: {existingBatchItem?.qty}
+              </span>
+            </p>
+          )} */}
+
+
 
       <Combobox  className="max-w-full" options={brands} value={selectedBrand} setValue={setSelectedBrand} placeholder="Brand" />
+
 
       <div className="relative">
         <Input
@@ -570,13 +653,7 @@ useEffect(() => {
       <Combobox options={cats} value={selectedCat} setValue={setSelectedCat} placeholder="Cover Type" />
 
       <Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="Price" />
-      {/* <Input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder="Quantity" /> */}
-
-      {/* {existingInventory && (
-        <p className="text-xs text-muted-foreground">
-          Existing inventory loaded — editing will override
-        </p>
-      )} */}
+   
       {/* OLD QTY (READ ONLY) */}
       {existingInventory && (
         <div className="space-y-1">

@@ -188,7 +188,7 @@ useEffect(() => {
       {reachedLimit && (
         <div className="text-sm font-bold text-yellow-500 py-6 px-8 bg-yellow-500/10 flex items-center gap-2">
           <AlertTriangle className="h-6 w-6 stroke-3" />
-          You have reached the maximum shop limit.
+          You have reached the maximum shop create limit. 
         </div>
       )}
       <div className="p-8 max-w-7xl mx-auto space-y-10">
@@ -202,7 +202,8 @@ useEffect(() => {
 
         <div className="flex gap-2">
 
-        <Dialog open={open} onOpenChange={(val) => { if(!val) resetForm(); setOpen(val); }}>
+        <Dialog open={open} onOpenChange={setOpen}>
+        {/* <Dialog open={open} onOpenChange={(val) => { if(!val) resetForm(); setOpen(val); }}> */}
         
 {!isShopUser && !reachedLimit && (
   <DialogTrigger asChild>

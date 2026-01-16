@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import UserManagement from "./userManagement";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { Progress } from "./ui/progress";
 
 export default function SettingsDialog({ user, shop }) {
   const [open, setOpen] = useState(false);
@@ -288,10 +289,10 @@ export default function SettingsDialog({ user, shop }) {
             </div>
           </TabsContent>
 
-          {/* 💾 STORAGE */}
-          <TabsContent value="storage" className="space-y-3">
-              <div className="rounded-xl border p-4 text-sm space-y-2">
-                <p className="font-medium">storage counts</p>
+
+            <TabsContent value="storage" className="space-y-3">
+              <div className="rounded-xl border p-4 text-sm space-y-4">
+                <p className="font-medium">Storage Usage</p>
                 <Separator />
 
                 {storage.loading ? (
@@ -300,23 +301,47 @@ export default function SettingsDialog({ user, shop }) {
                     Calculating usage…
                   </p>
                 ) : (
+                  <div className="space-y-4">
+              {(() => {
+                const total = storage.usedMB + storage.remainingMB;
+                const usedPercentage = total > 0 ? Math.round((storage.usedMB / total) * 100) : 0;
+                const availablePercentage = 100 - usedPercentage;
+
+                return (
                   <>
-                    <p>
-                      Used Storage:{" "}
-                      <strong>~{storage.usedMB} MB</strong>
-                    </p>
-                    <p>
-                      Remaining:{" "}
-                      <strong>{storage.remainingMB} MB</strong>
-                    </p>
-                    <p className="text-xs capitalize text-muted-foreground">
-                      Estimated using Database Counts
+                    {/* Progress Bar Section */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-medium">{usedPercentage}% Used</span>
+                        <span className="text-muted-foreground">{availablePercentage}% Available</span>
+                      </div>
+                      <Progress
+                        value={usedPercentage} 
+                        className="h-2" 
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <p className="text-muted-foreground text-xs uppercase tracking-tight">Used %</p>
+                        <p className="text-lg font-bold">{usedPercentage}%</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-xs uppercase tracking-tight">Available %</p>
+                        <p className="text-lg font-bold">{availablePercentage}%</p>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] italic text-muted-foreground border-t pt-2">
+                      Calculated based on a total capacity of {total} MB
                     </p>
                   </>
-                )}
-              </div>
-            </TabsContent>
-
+                );
+              })()}
+            </div>
+    )}
+  </div>
+</TabsContent>
         </Tabs>
 
         {/* <Button

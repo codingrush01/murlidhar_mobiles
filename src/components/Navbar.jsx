@@ -51,9 +51,11 @@ export default function Navbar({ user }) {
         {/* Logo */}
         <div className="flex items-center gap-2 font-bold text-xl tracking-tighter">
             {/* MarutiMobiles */}
+            <Link to="/dashboard">
           <div className="flex gap-1  text-green-500 rounded-lg shadow-primary/20">
            મુરલીધર <FeatherIcon />
           </div>
+            </Link>
         </div>
 
         {/* Navigation Links */}
