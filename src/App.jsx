@@ -3,15 +3,16 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { auth, db } from './utils/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-import ShopCreation from './pages/ShopCreation'; 
 import Login from './components/Login';
 import PageTransition from './components/page-transition';
 import Dashboard from './pages/Dashboard';
 import Navbar from './components/Navbar';
 import { Toaster } from 'sonner';
 import StockEntry from './pages/StockEntry';
+// import ShopCreation from './pages/ShopCreation'; 
 import InventoryPage from './pages/Inventory';
 import { doc, onSnapshot } from 'firebase/firestore';
+import ShopCreation from './pages/ShopCreation';
 
 function App() {
   const location = useLocation();
