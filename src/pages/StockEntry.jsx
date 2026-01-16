@@ -1,4 +1,15 @@
 "use client";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 import { useState, useEffect } from "react";
 import {
@@ -490,12 +501,48 @@ useEffect(() => {
                   handleEditAttr("phone_cover_types", c.id, c.name)
                 }
               />
-              <Trash2
+              {/* <Trash2
                 className="h-4 w-4 cursor-pointer text-red-500"
                 onClick={() =>
                   handleDeleteAttr("phone_cover_types", c.id)
                 }
-              />
+              /> */}
+              <AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Trash2 className="h-4 w-4 cursor-pointer text-red-500" />
+  </AlertDialogTrigger>
+
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>
+        Delete cover type?
+      </AlertDialogTitle>
+      <AlertDialogDescription>
+        This cover type may be used in existing inventory.
+        <br />
+        <span className="font-medium text-destructive">
+          Deleting it will affect all related stock.
+        </span>
+        <br />
+        Please remove or update existing inventory first,
+        or create a new cover type before deleting.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction
+         className="bg-destructive/20 text-destructive hover:bg-destructive/30"
+        onClick={() =>
+          handleDeleteAttr("phone_cover_types", c.id)
+        }
+      >
+        Delete Anyway
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
             </div>
           ))}
         </div>
@@ -529,12 +576,51 @@ useEffect(() => {
                   handleEditAttr("phone_brands", b.id, b.name)
                 }
               />
-              <Trash2
+              {/* <Trash2
                 className="h-4 w-4 cursor-pointer text-red-500"
                 onClick={() =>
                   handleDeleteAttr("phone_brands", b.id)
                 }
-              />
+              /> */}
+              <AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Trash2 className="h-4 w-4 cursor-pointer text-red-500" />
+  </AlertDialogTrigger>
+
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>
+        Delete brand?
+      </AlertDialogTitle>
+      <AlertDialogDescription>
+        This brand may be used in existing inventory.
+        <br />
+        <span className="font-medium text-destructive">
+          Deleting it will affect all related products.
+        </span>
+        <br />
+        Please update or remove existing stock first,
+        or create a new brand before deleting.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel>
+        Cancel
+      </AlertDialogCancel>
+
+      <AlertDialogAction
+        className="bg-destructive/20 text-destructive hover:bg-destructive/30"
+        onClick={() =>
+          handleDeleteAttr("phone_brands", b.id)
+        }
+      >
+        Delete Anyway
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
             </div>
           ))}
         </div>
@@ -607,14 +693,7 @@ useEffect(() => {
 </div>
 
 
-          {/* {batchExists && (
-            <p className="text-sm text-amber-600 mt-1">
-              ⚠️ This batch already exists
-              <span className="block text-xs text-muted-foreground">
-                Existing Qty: {existingBatchItem?.qty}
-              </span>
-            </p>
-          )} */}
+         
 
 
 
