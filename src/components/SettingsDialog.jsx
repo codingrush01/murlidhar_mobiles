@@ -32,6 +32,7 @@ import {
 import UserManagement from "./userManagement";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { Progress } from "./ui/progress";
+import { ScrollArea } from "./ui/scroll-area";
 
 export default function SettingsDialog({ user, shop }) {
   const [open, setOpen] = useState(false);
@@ -241,6 +242,8 @@ export default function SettingsDialog({ user, shop }) {
           
           </TabsList>
 
+          <ScrollArea className=" h-[calc(100vh-200px)]">
+
           {/* 👤 USER */}
           <TabsContent value="user" className="space-y-4">
             <div className="rounded-xl border p-4 text-sm space-y-1">
@@ -332,26 +335,21 @@ export default function SettingsDialog({ user, shop }) {
                       </div>
                     </div>
 
-                    <p className="text-[10px] italic text-muted-foreground border-t pt-2">
+                    {/* <p className="text-[10px] italic text-muted-foreground border-t pt-2">
                       Calculated based on a total capacity of {total} MB
-                    </p>
+                    </p> */}
                   </>
                 );
               })()}
             </div>
     )}
   </div>
-</TabsContent>
+          </TabsContent>
+          </ScrollArea>
+
         </Tabs>
 
-        {/* <Button
-          onClick={saveSettings}
-          className="w-full mt-4 gap-2"
-          disabled={isSaving}
-        >
-          {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isSaving ? "Saving..." : "Save Settings"}
-        </Button> */}
+      
           {userRole === "admin" &&  (
           <Button
             onClick={saveSettings}

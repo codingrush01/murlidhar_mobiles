@@ -442,7 +442,7 @@ export default function InventoryPage() {
 
                   {/* Mobile / Tablet card */}
                   <div className="lg:hidden border border-border/50 rounded-lg p-3 space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between ">
                       <span className="font-semibold">{brandMap[i.brand_id] ?? "—"}</span>
                      
                       <span className="text-sm text-muted-foreground">{shopMap[i.shop_id]}</span>
@@ -450,12 +450,18 @@ export default function InventoryPage() {
                      
                     </div>
                     <div className="flex justify-between">
-                      <div className="flex gap-1">
+                      <div className="flex justify-between flex-col">
+
                         <span>{modelMap[i.model_id]}</span>
+                      <div className="flex gap-1 flex-wrap ">
                         <Badge className="w-fit py-1 h-fit " variant="outline">{typeMap[i.type_id]}</Badge>
                         <Badge className="w-fit py-1 h-fit " variant="outline">{[i.batch_no]}</Badge>
                       </div>
-                      <div>
+                      
+
+
+                      </div>
+                        <div className="flex-1  items-end justify-end flex">
 
                       price:
                       <Input
@@ -464,52 +470,66 @@ export default function InventoryPage() {
                         value={i.price}
                         onChange={(e) => updateField(i.id, { price: Number(e.target.value) })}
                       />
-                      </div>
+                        </div>
 
                     </div>
-                    <div className="flex justify-between items-center ">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          disabled={i.qty === 0}
-                          onClick={() => updateField(i.id, { qty: i.qty - 1 })}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-8 text-center font-bold">{i.qty}</span>
-                        <Button
-                          size="icon"
-                          onClick={() => updateField(i.id, { qty: i.qty + 1 })}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center gap-2 ">
-                        <Badge
-                          className={low ? "bg-red-500/10 text-red-600" : "bg-emerald-500/10 text-emerald-600"}
-                        >
-                          {low ? "Low Stock" : "Healthy"}
-                        </Badge>
-                        <div className="h-4 bg-secondary w-px mx-1 block" />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        {/* Qty controls */}
+                        <div className="flex items-center gap-2 sm:justify-start">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            disabled={i.qty === 0}
+                            onClick={() => updateField(i.id, { qty: i.qty - 1 })}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
 
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => setReorderItem(i)}
-                        >
-                          <PackagePlus className="h-4 w-4" />
-                        </Button>
-                        <Button
-                        size="icon"
-                        variant="destructive"
-                        onClick={() => deleteStock(i.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                          <span className="w-8 text-center font-bold">{i.qty}</span>
 
+                          <Button
+                            size="icon"
+                            onClick={() => updateField(i.id, { qty: i.qty + 1 })}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+                          <Badge
+                            className={
+                              low
+                                ? "bg-red-500/10 text-red-600"
+                                : "bg-emerald-500/10 text-emerald-600"
+                            }
+                          >
+                            {low ? "Low Stock" : "Healthy"}
+                          </Badge>
+
+                          <div className="hidden sm:block h-4 bg-secondary w-px mx-1" />
+
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="flex-1 sm:flex-none"
+                            onClick={() => setReorderItem(i)}
+                          >
+                            <PackagePlus className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            className="flex-1 sm:flex-none"
+                            onClick={() => deleteStock(i.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+
+             
                   </div>
                 </div>
               );

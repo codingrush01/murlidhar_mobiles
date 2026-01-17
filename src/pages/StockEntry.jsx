@@ -337,7 +337,7 @@ useEffect(() => {
   };
 
   const handleDeleteAttr = async (coll, id) => {
-    if (!confirm("Delete this item?")) return;
+    // if (!confirm("Delete this item?")) return;
     await deleteDoc(doc(db, coll, id));
     toast.success("Deleted");
   };

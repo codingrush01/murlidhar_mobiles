@@ -31,12 +31,21 @@ export default function AdvancedSummaryDialog({ inventory }) {
 
   useEffect(() => {
     return onSnapshot(collection(db, "shops"), (snap) => {
-      setShops(
-        snap.docs.map((d) => ({
-          id: d.id,
-          name: d.data().shopName,
-        }))
-      );
+      // setShops(
+      //   snap.docs.map((d) => ({
+      //     id: d.id,
+      //     name: d.data().shopName,
+      //   }))
+      // );
+      const shopList = snap.docs.map((d) => ({
+        id: d.id,
+        name: d.data().shopName,
+      }));
+      // Sort by shopName (alphabetical) or by id if numeric
+       // 2️⃣ Sort alphabetically (or numeric if needed)
+    shopList.sort((a, b) => a.name.localeCompare(b.name));
+    setShops(shopList);
+
     });
   }, []);
 
@@ -131,7 +140,7 @@ export default function AdvancedSummaryDialog({ inventory }) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-full w-full max-w-full h-lvh rounded-none block overflow-hidden">
+      <DialogContent className="sm:max-w-full w-full max-w-full h-dvh rounded-none  overflow-hidden">
         <DialogHeader>
           <DialogTitle>Inventory Summary</DialogTitle>
         </DialogHeader>
@@ -145,7 +154,7 @@ export default function AdvancedSummaryDialog({ inventory }) {
         />
         </div>
 
-        <Tabs defaultValue={shops[1]?.id} className="mt-1 h-full">
+        <Tabs defaultValue={shops[0]?.id} className="mt-1 h-full">
           <TabsList className="bg-transparent">
             {shops.map((s) => (
               <TabsTrigger key={s.id} value={s.id} className="border-0 
@@ -203,15 +212,15 @@ export default function AdvancedSummaryDialog({ inventory }) {
                                       }`;
 
                                 return (
-                                  <div className="flex gap-1">
-                                  <Badge key={typeId} variant="ghost" className="py-1.5 px-1.5">
-                                    <span className="pl-1">
+                                  <div className="flex gap-1 flex-wrap">
+                                  <Badge key={typeId} variant="ghost" className="py-1.5 px-1.5 flex-wrap items-start justify-start rounded-sm sm:rounded-2xl">
+                                    <span className="pl-1 pt-0.5 ">
                                     {coverTypeMap[typeId]} 
                                     </span>
                                   <Badge variant=""> {data.qty}</Badge>
                                   <Badge variant=""> {priceLabel}</Badge>
-                                  <Badge variant="" className="leading-[1.2]">
-                                    Batche No: {[...data.batches].join(", ")}
+                                  <Badge variant="" className="leading-[1.4]">
+                                    {[...data.batches].join(", ")}
                                   </Badge>
                                    
                                   </Badge>

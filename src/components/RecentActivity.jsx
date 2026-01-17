@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input"; // NEW
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
+import { Link } from "react-router-dom";
 
 export default function RecentActivity() {
   const [activities, setActivities] = useState([]);
@@ -220,6 +221,8 @@ const ActivityRow = ({ a, detailed = false }) => {
 };
 
 
+
+
   return (
     <Card className="rounded-[2rem] shadow-none h-full bg-muted/20 max-w-full w-full ">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -234,9 +237,9 @@ const ActivityRow = ({ a, detailed = false }) => {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="rounded-none sm:max-w-full max-w-full w-full  h-lvh overflow-hidden block ">
+          <DialogContent className="sm:max-w-full w-full max-w-full h-dvh rounded-none  overflow-hidden ">
             <DialogHeader>
-              <DialogTitle>Inventory Activity</DialogTitle>
+              <DialogTitle>Story Book</DialogTitle>
             </DialogHeader>
 
             {/* FILTERS */}
@@ -290,15 +293,24 @@ const ActivityRow = ({ a, detailed = false }) => {
       <ScrollArea className="h-72 w-full px-0">
 
       <CardContent className="space-y-1 pt-2 " >
+        
+      {activities.length === 0 ? (
+            <div className="h-full  w-full flex flex-col items-center justify-center">
+              <InfoIcon className="text-muted-foreground" size={38} aria-label="Information" />
+              <p className="mt-4 text-sm text-muted-foreground text-center">
+                No activity logs found.
+              </p>
+              <Link to="/stock-entery">
+                 <Button variant="link">Create One!</Button>
+              </Link>
+            </div>
+          ) : (
+            activities.slice(0, 5).map((a) => <ActivityRow key={a.id} a={a} />)
+          )}
+
         {/* {activities.slice(0, 5).map((a) => (
-          <ActivityRow key={a.id}  a={{
-            ...a,
-            updatedBy: a.updatedBy ? a.updatedBy.split(" - ")[1] : " ", 
-          }} />
-        ))} */}
-        {activities.slice(0, 5).map((a) => (
           <ActivityRow key={a.id} a={a}  />
-        ))}
+        ))} */}
       </CardContent>
       </ScrollArea>
 

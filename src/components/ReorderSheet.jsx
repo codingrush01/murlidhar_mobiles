@@ -30,8 +30,11 @@ export function ReorderSheet({
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
-    if (!addQty || Number(addQty) <= 0) {
-      return toast.error("Enter quantity to add");
+    // if (!addQty || Number(addQty) <= 0) {
+    //   return toast.error("Enter quantity to add");
+    // }
+    if (addQty === "" || addQty === null || Number(addQty) < 0) {
+      return toast.error("Enter valid quantity");
     }
 
     try {
