@@ -28,20 +28,23 @@ import {
   Database,
   BarChart3,
   Loader2,
+  InfoIcon,
 } from "lucide-react";
 import UserManagement from "./userManagement";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
-
-export default function SettingsDialog({ user, shop }) {
+// { darkMode, setDarkMode 
+export default function SettingsDialog({ user, shop , darkMode = false,
+  setDarkMode = () => {}  }) {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   
   const [lowStockQty, setLowStockQty] = useState(5);
   const [lowStockValue, setLowStockValue] = useState(1000);
-  const [darkMode, setDarkMode] = useState(false);
+
+  // const [darkMode, setDarkMode] = useState(false);
   const AVG_SIZES = {
     inventory: 1900,
     users: 1200,
@@ -97,43 +100,8 @@ export default function SettingsDialog({ user, shop }) {
 
     return () => unsubscribe();
   }, []);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
 
-  /* 🔹 Load settings */
-  // useEffect(() => {
-  //   const ref = doc(db, "settings", "global");
-  //   return onSnapshot(ref, (snap) => {
-  //     if (snap.exists()) {
-  //       const d = snap.data();
-  //       setLowStockQty(d.low_stock_qty ?? 5);
-  //       setLowStockValue(d.low_stock_value ?? 1000);
-  //       setDarkMode(d.dark_mode ?? false);
-  //     }
-  //   });
-  // }, []);
-
-  useEffect(() => {
-    const ref = doc(db, "settings", "global");
-    return onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setLowStockQty(d.low_stock_qty ?? 5);
-        setLowStockValue(d.low_stock_value ?? 1000);
-        setDarkMode(!!d.dark_mode);
-      }
-      setSettingsLoaded(true);
-    });
-  }, []);
-
-  const updateDarkMode = async (value) => {
-    setDarkMode(value);
-    await setDoc(
-      doc(db, "settings", "global"),
-      { dark_mode: value, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
-  };
 
   useEffect(() => {
     const calculateStorage = async () => {
@@ -175,7 +143,7 @@ export default function SettingsDialog({ user, shop }) {
         {
           low_stock_qty: Number(lowStockQty),
           low_stock_value: Number(lowStockValue),
-          dark_mode: darkMode,
+          // dark_mode: darkMode,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -186,10 +154,6 @@ export default function SettingsDialog({ user, shop }) {
     }
   };
 
-  /* 🔹 Dark mode */
-  // useEffect(() => {
-  //   document.documentElement.classList.toggle("dark", darkMode);
-  // }, [darkMode]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -238,6 +202,12 @@ export default function SettingsDialog({ user, shop }) {
             transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >
               <Database className="h-4 w-4"  />
               <p className="sm:block hidden">Storage</p>
+            </TabsTrigger>
+            <TabsTrigger value="about" className="border-0 
+           dark:data-[state=active]:bg-input/0
+            transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5" >
+              <InfoIcon className="h-4 w-4"  />
+              <p className="sm:block hidden">Information</p>
             </TabsTrigger>
           
           </TabsList>
@@ -288,7 +258,7 @@ export default function SettingsDialog({ user, shop }) {
           <TabsContent value="appearance" className="space-y-4">
             <div className="flex items-center justify-between rounded-xl border p-4">
               <Label>Dark Mode</Label>
-              <Switch checked={darkMode} onCheckedChange={updateDarkMode} />
+              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
             </div>
           </TabsContent>
 
@@ -344,6 +314,27 @@ export default function SettingsDialog({ user, shop }) {
             </div>
     )}
   </div>
+          </TabsContent>
+            <TabsContent value="about" className="space-y-3">
+              <div className="rounded-xl border p-4 text-sm space-y-4">
+              <h3 className="text-base font-semibold">Batch</h3>
+
+              <p className="text-muted-foreground">
+                Batch Number format:
+                <br />
+                <span className="font-medium text-foreground">
+                  B{`(batch)`} S{`(shop)`} N{`(Number)`} – [date-001]
+                </span>
+              </p>
+
+              <p className="text-xs text-muted-foreground">
+              Example:{" "}
+              <span className="font-medium">
+                BS1-[{new Date().toISOString().slice(0, 10)}-001]
+              </span>
+            </p>
+
+              </div>
           </TabsContent>
           </ScrollArea>
 

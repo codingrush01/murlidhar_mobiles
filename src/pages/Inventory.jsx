@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/utils/firebase";
-import { Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { deleteDoc } from "firebase/firestore";
 import {
   DropdownMenu,
@@ -44,6 +44,16 @@ import { ReorderSheet } from "@/components/ReorderSheet";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import InfiniteScroll from "react-infinite-scroll-component";
 
+// new: Debounce hook to optimize search input
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 const PAGE_SIZE = 50;
 
 export default function InventoryPage() {
@@ -57,16 +67,16 @@ export default function InventoryPage() {
   const [userRole, setUserRole] = useState(null);
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300); // new: debounce search
+
   const [tab, setTab] = useState("all");
   const [settings, setSettings] = useState({ low_stock_qty: 5 });
 
   const [shopMap, setShopMap] = useState({});
   const [modelMap, setModelMap] = useState({});
   const [brandMap, setBrandMap] = useState({});
-  const [types, setTypes] = useState([]); 
   const [typeMap, setTypeMap] = useState({});
 
-  
   // --- Auth & User Role ---
   useEffect(() => {
     const auth = getAuth();
@@ -101,93 +111,92 @@ export default function InventoryPage() {
     });
     return () => unsub();
   }, []);
+
+  // --- Inventory Listener (optimized) ---
   useEffect(() => {
     if (!userRole) return;
-  
+
     let constraints = [];
-  
-    if (userRole === "owner" && userShopId) {
-      constraints.push(where("shop_id", "==", userShopId));
-    }
-  
+    if (userRole === "owner" && userShopId) constraints.push(where("shop_id", "==", userShopId));
     constraints.push(orderBy("updatedAt", "desc"));
     constraints.push(limit(PAGE_SIZE));
-  
+
     const q = query(collection(db, "inventory"), ...constraints);
-  
+
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-      }));
-  
-      // 🔥 LIVE UPDATE ONLY FIRST PAGE
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // old: setInventory(prev => { const rest = prev.slice(PAGE_SIZE); return [...data, ...rest]; });
+      // new: only update first PAGE_SIZE items in inventory for live updates, keep rest untouched
       setInventory(prev => {
-        const rest = prev.slice(PAGE_SIZE);
+        const existingIds = prev.slice(PAGE_SIZE).map(i => i.id);
+        const rest = prev.filter(i => existingIds.includes(i.id));
         return [...data, ...rest];
       });
-  
+
       setLastDoc(snap.docs[snap.docs.length - 1] || null);
     });
-  
+
     return () => unsub();
   }, [userRole, userShopId]);
-  
 
-  // --- Maps ---
+  // --- Maps (optimized: fetch once instead of live listener) ---
   useEffect(() => {
-    return onSnapshot(collection(db, "shops"), (snap) => {
+    const fetchMap = async () => {
+      const snap = await getDocs(collection(db, "shops"));
       const map = {};
-      snap.docs.forEach((d) => (map[d.id] = d.data().shopName));
+      snap.docs.forEach(d => (map[d.id] = d.data().shopName));
       setShopMap(map);
-    });
+    };
+    fetchMap();
   }, []);
 
   useEffect(() => {
-    return onSnapshot(collection(db, "phone_models"), (snap) => {
+    const fetchMap = async () => {
+      const snap = await getDocs(collection(db, "phone_models"));
       const map = {};
-      snap.docs.forEach((d) => (map[d.id] = d.data().name));
+      snap.docs.forEach(d => (map[d.id] = d.data().name));
       setModelMap(map);
-    });
+    };
+    fetchMap();
   }, []);
 
   useEffect(() => {
-    return onSnapshot(collection(db, "phone_brands"), (snap) => {
+    const fetchMap = async () => {
+      const snap = await getDocs(collection(db, "phone_brands"));
       const map = {};
-      snap.docs.forEach((d) => (map[d.id] = d.data().name));
+      snap.docs.forEach(d => (map[d.id] = d.data().name));
       setBrandMap(map);
-    });
+    };
+    fetchMap();
   }, []);
 
   useEffect(() => {
-    return onSnapshot(doc(db, "settings", "global"), (snap) => {
-      if (snap.exists()) setSettings(snap.data());
-    });
-  }, []);
-
-
-  useEffect(() => {
-    const q = query(collection(db, "phone_cover_types")); // ✅ CHECK THIS NAME
-  
-    return onSnapshot(q, (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        map[d.id] = data.name; // ✅ CHECK FIELD NAME
+    const fetchSettings = async () => {
+      const snap = await getDocs(collection(db, "settings"));
+      snap.forEach(d => {
+        if (d.id === "global") setSettings(d.data());
       });
-  
-      setTypeMap(map);
-    });
+    };
+    fetchSettings();
   }, []);
 
+  useEffect(() => {
+    const fetchMap = async () => {
+      const snap = await getDocs(collection(db, "phone_cover_types"));
+      const map = {};
+      snap.docs.forEach(d => { map[d.id] = d.data().name; });
+      setTypeMap(map);
+    };
+    fetchMap();
+  }, []);
+
+  // --- Optimistic Update + Firestore ---
   const updateField = async (id, data) => {
-    // ✅ 1. Optimistic UI update
-    setInventory((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, ...data } : item
-      )
+    setInventory(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...data } : item))
     );
-  
+
     let updater = "Unknown";
     if (user) {
       if (userRole === "admin") updater = `Admin (${user.email})`;
@@ -196,78 +205,64 @@ export default function InventoryPage() {
         updater = `Owner (${user.email}) - ${shopName}`;
       }
     }
-  
-    // ✅ 2. Firestore update
+
     await updateDoc(doc(db, "inventory", id), {
       ...data,
       updatedAt: serverTimestamp(),
       updatedBy: updater,
     });
   };
+
   const deleteStock = async (id) => {
     if (!confirm("Delete this batch permanently?")) return;
     await deleteDoc(doc(db, "inventory", id));
   };
-  
-  
-  
+
+  // --- Fetch Inventory (pagination) ---
   const fetchInventory = async (reset = false) => {
     if (!userRole) return;
-  
-    let constraints = [];
-  
-    if (userRole === "owner" && userShopId) {
-      constraints.push(where("shop_id", "==", userShopId));
-    }
 
-    // ✅ ALWAYS last ordering
+    let constraints = [];
+    if (userRole === "owner" && userShopId) constraints.push(where("shop_id", "==", userShopId));
     constraints.push(orderBy("updatedAt", "desc"));
     constraints.push(limit(PAGE_SIZE));
-  
-    if (!reset && lastDoc) {
-      constraints.push(startAfter(lastDoc));
-    }
-  
+    if (!reset && lastDoc) constraints.push(startAfter(lastDoc));
+
     const q = query(collection(db, "inventory"), ...constraints);
     const snap = await getDocs(q);
-  
+
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  
-    setInventory(prev => reset ? data : [...prev, ...data]);
+
+    setInventory(prev => (reset ? data : [...prev, ...data]));
     setLastDoc(snap.docs[snap.docs.length - 1] || null);
     setHasMore(snap.docs.length === PAGE_SIZE);
   };
-  
+
+  // old: useEffect reset on every search
+  // new: use debouncedSearch to avoid too many fetches
   useEffect(() => {
     setInventory([]);
     setLastDoc(null);
     setHasMore(true);
     fetchInventory(true);
-  }, [search, userRole, userShopId]);
-  
+  }, [debouncedSearch, userRole, userShopId]);
+
+  // --- Displayed Inventory (client-side filter) ---
   const displayed = useMemo(() => {
     const lowQty = settings?.low_stock_qty ?? 5;
-  
-    // 🔍 Split search into keywords
-    const keywords = search.trim().toLowerCase().split(/\s+/);
-  
-    return inventory.filter((i) => {
-      // 🔎 Keyword match (CLIENT SIDE)
-      const matchesSearch =
-        !keywords.length ||
-        keywords.every(k =>
-          i.searchKey?.toLowerCase().includes(k)
-        );
-  
+    const keywords = debouncedSearch.trim().toLowerCase().split(/\s+/);
+
+    return inventory.filter(i => {
+      const matchesSearch = !keywords.length || keywords.every(k =>
+        i.searchKey?.toLowerCase().includes(k)
+      );
       if (!matchesSearch) return false;
-  
-      // 📦 Stock tabs
+
       if (tab === "low") return i.qty < lowQty;
       if (tab === "healthy") return i.qty >= lowQty;
-  
       return true;
     });
-  }, [inventory, search, tab, shopMap, modelMap, brandMap, settings]);
+  }, [inventory, debouncedSearch, tab, shopMap, modelMap, brandMap, settings]);
   
   return (
     <Card className="rounded-[2rem] shadow-none border-none bg-transparent">
@@ -307,9 +302,10 @@ export default function InventoryPage() {
           dataLength={inventory.length}
           next={fetchInventory}
           hasMore={hasMore}
-          loader={<p className="text-center py-4">Loading more items...</p>}
+          loader={<p className="text-center py-4"><Loader2/> Loading more items...</p>}
           scrollableTarget="scrollableDiv"
         >
+          
           {/* HEADER ROW - Desktop */}
           <div className="hidden lg:grid grid-cols-10 text-xs text-muted-foreground mb-2 gap-2 text-center ">
             <div>Brand</div>
@@ -322,6 +318,17 @@ export default function InventoryPage() {
             <div className="text-center">Total</div>
             <div className="text-center">More</div>
           </div>
+          {displayed.length === 0 ? (
+    <p className="text-center py-4 text-muted-foreground">
+      {search
+        ? `No matching items found for "${search}"`
+        : tab === "low"
+        ? "No low stock items"
+        : tab === "healthy"
+        ? "No healthy stock items"
+        : "Inventory is empty"}
+    </p>
+  ) : (
 
           <div className="space-y-2">
            
@@ -412,7 +419,7 @@ export default function InventoryPage() {
                           group-hover:text-primary
                           group-focus:text-primary
                             " />
-                            Sotck Adjustment batch
+                            Stock Adjustment
                           </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => deleteStock(i.id)}
@@ -535,8 +542,8 @@ export default function InventoryPage() {
               );
             })}
           </div>
+           )}
         </InfiniteScroll>
-
         {reorderItem && (
           <ReorderSheet
             item={reorderItem}

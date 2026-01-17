@@ -30,6 +30,8 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Link } from "react-router-dom";
 
+
+
 export default function RecentActivity() {
   const [activities, setActivities] = useState([]);
   const [shopMap, setShopMap] = useState({});
@@ -165,34 +167,46 @@ const ActivityRow = ({ a, detailed = false }) => {
                 {brandMap[a.brand_id]}
               </h2>
 
-            <Badge variant="secondary" className="text-[11px]">
+
+            <div className="flex gap-1 flex-wrap">
+
+
+            <Badge variant="secondary" className="px-2 py-0.5 text-xs">
               {modelMap[a.model_id] || "Unknown model"}
             </Badge>
+
+            {detailed && a.batch_no && (
+              <Badge variant="outline" className="px-2 py-0.5 text-xs">
+                 #{a.batch_no}
+              </Badge>
+            )}
+            </div>
+
           </div>
 
           {/* META BADGES */}
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant="outline" className="text-[11px]">
-              {shopMap[a.shop_id] || "Unknown shop"}
-            </Badge>
+         
 
             <Badge variant="outline" className="text-[11px]">
               {typeMap[a.type_id] || "Unknown cover"}
             </Badge>
 
-            {detailed && a.batch_no && (
-              <Badge variant="outline" className="text-[11px]">
-                 #{a.batch_no}
-              </Badge>
-            )}
+           
           </div>
         </div>
 
         {/* QTY + TIME */}
         <div className="text-right shrink-0 space-y-1">
-          <Badge className="px-2 py-0.5 text-xs">
+          <div className="flex gap-1">
+
+        <Badge variant="outline" className="px-2 py-0.5 text-xs">
+              {shopMap[a.shop_id] || "Unknown shop"}
+        </Badge>
+        <Badge className="px-2 py-0.5 text-xs">
             Qty {a.qty}
-          </Badge>
+        </Badge>
+        </div>
 
           <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
             <Clock className="h-3 w-3" />

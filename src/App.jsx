@@ -19,22 +19,30 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [darkMode, setDarkMode] = useState(false);
-
-  // 🔹 Global Firestore listener
-  useEffect(() => {
-    const ref = doc(db, "settings", "global");
-    return onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        setDarkMode(!!snap.data().dark_mode);
-      }
-    });
-  }, []);
-
-  // 🔹 Apply shadcn dark class
+  // darkmode code
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem("darkMode") === "true";
+  });
+  
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
+  
+  // 🔹 Global Firestore listener
+  // useEffect(() => {
+  //   const ref = doc(db, "settings", "global");
+  //   return onSnapshot(ref, (snap) => {
+  //     if (snap.exists()) {
+  //       setDarkMode(!!snap.data().dark_mode);
+  //     }
+  //   });
+  // }, []);
+
+  // 🔹 Apply shadcn dark class
+  // useEffect(() => {
+  //   document.documentElement.classList.toggle("dark", darkMode);
+  // }, [darkMode]);
 
 
   useEffect(() => {
@@ -77,7 +85,8 @@ function App() {
         {/* Protected Shops Page */}
         <Route 
           path="/shops" 
-          element={user ? <ShopCreation /> : <Navigate to="/login" />} 
+          element={user ? <ShopCreation  darkMode={darkMode}
+          setDarkMode={setDarkMode}  /> : <Navigate to="/login" />} 
         />
         <Route 
           path="/stock-entery" 
