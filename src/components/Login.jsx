@@ -115,20 +115,11 @@ export default function Login() {
               </div>
             </div>
           </form>
-          {/* <p className="text-sm text-right mt-1 animate-item">
-            <Button
-              variant="link"
-              type="button"
-              onClick={() => navigate("/forgot-password")}
-              className="text-primary  text-xs mt-0 p-0"
-            >
-              Forgot Password?
-            </Button>
-          </p> */}
+        
         </CardContent>
 
         <CardFooter className="flex-col gap-2 animate-item">
-          <p className="text-xs text-muted-foreground opacity-70">Secured by Google</p>
+          {/* <p className="text-xs text-muted-foreground opacity-70">Secured by Google</p> */}
         </CardFooter>
       </Card>
     </div>

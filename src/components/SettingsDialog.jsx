@@ -132,6 +132,24 @@ export default function SettingsDialog({ user, shop , darkMode = false,
   
     if (open) calculateStorage();
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+  
+    const settingsRef = doc(db, "settings", "global");
+  
+    const unsub = onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+  
+        setLowStockQty(data.low_stock_qty ?? 5);
+        setLowStockValue(data.low_stock_value ?? 1000);
+      }
+    });
+  
+    return () => unsub();
+  }, [open]);
+  
   
 
   /* 🔹 Save settings */

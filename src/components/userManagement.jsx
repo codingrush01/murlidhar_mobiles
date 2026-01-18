@@ -17,6 +17,8 @@ import {
   setDoc,
 } from "firebase/firestore";
 
+
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,6 +129,7 @@ export default function UserManagement({ shop }) {
       return;
     }
     const staffCount = users.filter(u => u.role === "staff").length;
+    const canCreateUser = ownerCount < 3 || staffCount < 3;
 
     if (form.role === "staff" && staffCount >= 3) {
       toast.error("Max 3 staff allowed");
@@ -194,6 +197,8 @@ export default function UserManagement({ shop }) {
   const availableShops = shops.filter(
     (s) => s.email && !usedEmails.includes(s.email)
   );
+
+  
 
   return (
     <div className="space-y-6">

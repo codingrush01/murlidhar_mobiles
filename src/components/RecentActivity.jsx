@@ -147,12 +147,12 @@ const ActivityRow = ({ a, detailed = false }) => {
     <div
       className="
         group relative rounded-2xl border border-border/40
-        bg-muted/20 p-4
+        bg-muted/20 p-2
         hover:bg-muted/40 hover:border-border/60
         transition-all
       "
     >
-      <div className="flex gap-4 items-start">
+      <div className="flex  gap-4 items-start  w-full ">
         {/* ICON */}
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
           <Package className="h-4 w-4" />
@@ -161,8 +161,12 @@ const ActivityRow = ({ a, detailed = false }) => {
         {/* MAIN CONTENT */}
         <div className="flex-1 space-y-1.5">
           {/* MODEL / BRAND */}
-          <div className="flex flex-wrap items-center gap-2">
-    
+          <div className="">
+          <h4 className=" py-0.5 text-xs text-primary/90">
+              {shopMap[a.shop_id] || "Unknown shop"}
+        </h4>
+        <div className="flex flex-wrap items-center gap-2">
+
               <h2 className="text-md font-bold">
                 {brandMap[a.brand_id]}
               </h2>
@@ -181,6 +185,8 @@ const ActivityRow = ({ a, detailed = false }) => {
               </Badge>
             )}
             </div>
+        </div>
+
 
           </div>
 
@@ -198,16 +204,14 @@ const ActivityRow = ({ a, detailed = false }) => {
 
         {/* QTY + TIME */}
         <div className="text-right shrink-0 space-y-1">
-          <div className="flex gap-1">
+          <div className="flex gap-1 justify-end">
 
-        <Badge variant="outline" className="px-2 py-0.5 text-xs">
-              {shopMap[a.shop_id] || "Unknown shop"}
-        </Badge>
+       
         <Badge className="px-2 py-0.5 text-xs">
             Qty {a.qty}
         </Badge>
         </div>
-
+        {detailed && (
           <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
             <Clock className="h-3 w-3" />
             {a.updatedAt?.toDate().toLocaleString("en-IN", {
@@ -218,6 +222,7 @@ const ActivityRow = ({ a, detailed = false }) => {
               minute: "2-digit",
             })}
           </div>
+        )}
         </div>
       </div>
 
@@ -306,7 +311,7 @@ const ActivityRow = ({ a, detailed = false }) => {
 
       <ScrollArea className="h-72 w-full px-0">
 
-      <CardContent className="space-y-1 pt-2 " >
+      <CardContent className="space-y-1 pt-2 @container" >
         
       {activities.length === 0 ? (
             <div className="h-full  w-full flex flex-col items-center justify-center">
@@ -319,7 +324,7 @@ const ActivityRow = ({ a, detailed = false }) => {
               </Link>
             </div>
           ) : (
-            activities.slice(0, 5).map((a) => <ActivityRow key={a.id} a={a} />)
+            activities.slice(0, 5).map((a) =>  <ActivityRow key={a.id} a={a} />)
           )}
 
         {/* {activities.slice(0, 5).map((a) => (
