@@ -106,7 +106,7 @@ export default function Dashboard() {
                     <div className="flex items-baseline gap-2">
                       <div className="text-3xl font-bold tabular-nums">₹{shop.totalValue.toLocaleString()}</div>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${isLow ? "text-red-500 bg-red-500/10" : "text-emerald-600 bg-emerald-500/10"}`}>
-                        {isLow ? "Low Stock" : "Healthy"}
+                        {isLow ? "Low" : "Healthy"}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-4">

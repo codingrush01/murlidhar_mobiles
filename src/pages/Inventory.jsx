@@ -511,7 +511,7 @@ export default function InventoryPage() {
                                 : "bg-emerald-500/10 text-emerald-600"
                             }
                           >
-                            {low ? "Low Stock" : "Healthy"}
+                            {low ? "Low" : "Healthy"}
                           </Badge>
 
                           <div className="hidden sm:block h-4 bg-secondary w-px mx-1" />
