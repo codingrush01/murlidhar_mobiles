@@ -252,10 +252,12 @@ const debouncedModelName = useDebounce(modelName, 300);
   };
 
   // ---------------- UI ----------------
+  // const [searchTerm, setSearchTerm] = useState("");
   return (
     <div ref={container} className="container-gsap p-8 max-w-7xl mx-auto space-y-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-4xl font-bold tracking-tight">Stock Entry</h1>
+      
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" className="px-4 gap-2 shadow-none  active:scale-95 transition-transform">
@@ -273,6 +275,7 @@ const debouncedModelName = useDebounce(modelName, 300);
             dark:data-[state=active]:bg-input/0
              transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Brands</TabsTrigger>
               </TabsList>
+
               {/* Cats */}
               <TabsContent value="cats" className="space-y-4 ">
                 <div className="flex gap-2">
@@ -365,15 +368,171 @@ function BatchInput({ batchNo, setBatchNo, showBatches, setShowBatches, filtered
 }
 
 /* ------------------- MODEL INPUT ------------------- */
+// function ModelInput({ modelName, setModelName, filteredModels }) {
+//   const [showModels, setShowModels] = useState(false);
+  
+  
+//   return (
+//     <div className="relative" >
+//       <Input value={modelName} onChange={e => { setModelName(e.target.value); setShowModels(true); }} onFocus={() => setShowModels(true)} placeholder="Model" />
+//       {showModels && modelName && filteredModels.length > 0 && (
+//           <div 
+//           className={cn(
+//             "absolute z-20 mt-1 bg-background border w-full rounded-md shadow overflow-y-auto transition-all",
+//             "[&::-webkit-scrollbar]:w-1", 
+//             "[&::-webkit-scrollbar-track]:bg-transparent",
+//             "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/20",
+//             "[&::-webkit-scrollbar-thumb]:rounded-full"
+//           )}
+//           style={{ 
+//             maxHeight: filteredModels.length > 4 ? "160px" : "auto" 
+//           }}
+//         >
+//           {filteredModels.map(m => (
+//             <button key={m.id} className="block  w-full px-3 py-2 text-left hover:bg-muted/10 focus:bg-muted/20 focus:border-0 focus:outline-0" onClick={() => { setModelName(m.name); setShowModels(false); }}>
+//               {m.name}
+//             </button>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+// ===== model input : with dropdown close feature ( esc key + outside click)
+// function ModelInput({ modelName, setModelName, filteredModels }) {
+//   const [showModels, setShowModels] = useState(false);
+//   const dropdownRef = useRef(null); // Create the ref
+
+//   // Click outside logic
+//   useEffect(() => {
+//     const handleEvents = (event) => {
+//       // 1. ESC Key Handling
+//       if (event.key === "Escape") {
+//         setShowModels(false);
+//       }
+      
+//       // 2. Click Outside Handling
+//       if (event.type === "mousedown" && dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+//         setShowModels(false);
+//       }
+//     };
+
+//     document.addEventListener("mousedown", handleEvents);
+//     document.addEventListener("keydown", handleEvents); // Listen for key presses
+    
+//     return () => {
+//       document.removeEventListener("mousedown", handleEvents);
+//       document.removeEventListener("keydown", handleEvents);
+//     };
+//   }, []);
+
+//   // Logic to hide dropdown if input matches a model name perfectly
+//   const isExactMatch = filteredModels.some(
+//     (m) => m.name.toLowerCase() === modelName.toLowerCase()
+//   );
+
+//   return (
+//     <div className="relative" ref={dropdownRef}> {/* Attach ref here */}
+//       <div className="relative flex items-center">
+//         <Input 
+//           value={modelName} 
+//           onChange={e => { setModelName(e.target.value); setShowModels(true); }} 
+//           onFocus={() => setShowModels(true)} 
+//           placeholder="Model" 
+//           className="pr-10" 
+//         />
+   
+//       </div>
+
+//       {showModels && modelName && filteredModels.length > 0 && !isExactMatch && (
+//         <div 
+//           className={cn(
+//             "absolute z-20 mt-1 bg-background border w-full rounded-md shadow overflow-y-auto transition-all",
+//             "[&::-webkit-scrollbar]:w-1", 
+//             "[&::-webkit-scrollbar-track]:bg-transparent",
+//             "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/20",
+//             "[&::-webkit-scrollbar-thumb]:rounded-full"
+//           )}
+//           style={{ 
+//             maxHeight: filteredModels.length > 4 ? "160px" : "auto" 
+//           }}
+//         >
+//           {filteredModels.map(m => (
+//             <button 
+//               key={m.id} 
+//               type="button"
+//               className="block w-full px-3 py-2 text-left hover:bg-muted/10 focus:bg-muted/20 focus:border-0 focus:outline-0" 
+//               onClick={() => { 
+//                 setModelName(m.name); 
+//                 setShowModels(false); 
+//               }}
+//             >
+//               {m.name}
+//             </button>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+// neweer version
 function ModelInput({ modelName, setModelName, filteredModels }) {
   const [showModels, setShowModels] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleEvents = (event) => {
+      if (event.key === "Escape") setShowModels(false);
+      if (event.type === "mousedown" && dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowModels(false);
+      }
+    };
+    document.addEventListener("mousedown", handleEvents);
+    document.addEventListener("keydown", handleEvents);
+    return () => {
+      document.removeEventListener("mousedown", handleEvents);
+      document.removeEventListener("keydown", handleEvents);
+    };
+  }, []);
+
   return (
-    <div className="relative">
-      <Input value={modelName} onChange={e => { setModelName(e.target.value); setShowModels(true); }} onFocus={() => setShowModels(true)} placeholder="Model" />
+    <div className="relative" ref={dropdownRef}>
+      <div className="relative flex items-center">
+        <Input 
+          value={modelName} 
+          onChange={e => { setModelName(e.target.value); setShowModels(true); }} 
+          onFocus={() => setShowModels(true)} 
+          placeholder="Model" 
+          className="pr-10" 
+        />
+      </div>
+
+      {/* REMOVED !isExactMatch so Y2 still shows if it's in the list */}
       {showModels && modelName && filteredModels.length > 0 && (
-        <div className="absolute z-20 mt-1 bg-background border w-full rounded-md shadow">
+        <div 
+          className={cn(
+            "absolute z-20 mt-1 bg-background border w-full rounded-md shadow overflow-y-auto transition-all",
+            "[&::-webkit-scrollbar]:w-1", 
+            "[&::-webkit-scrollbar-track]:bg-transparent",
+            "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/20",
+            "[&::-webkit-scrollbar-thumb]:rounded-full"
+          )}
+          style={{ 
+            maxHeight: filteredModels.length > 4 ? "160px" : "auto" 
+          }}
+        >
           {filteredModels.map(m => (
-            <button key={m.id} className="block w-full px-3 py-2 text-left hover:bg-muted/10" onClick={() => { setModelName(m.name); setShowModels(false); }}>
+            <button 
+              key={m.id} 
+              type="button"
+              className="block w-full px-3 py-2 text-left hover:bg-muted/10 focus:bg-muted/20 focus:border-0 focus:outline-0 transition-colors" 
+              onClick={() => { 
+                setModelName(m.name); 
+                setShowModels(false); // Closes after selection
+              }}
+            >
               {m.name}
             </button>
           ))}
@@ -382,7 +541,6 @@ function ModelInput({ modelName, setModelName, filteredModels }) {
     </div>
   );
 }
-
 /* ------------------- DELETE CONFIRM ------------------- */
 function DeleteConfirm({ onConfirm }) {
   return (
