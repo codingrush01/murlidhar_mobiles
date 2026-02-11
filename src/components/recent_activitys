@@ -7,11 +7,9 @@ import {
   onSnapshot,
   query,
   orderBy,
-  limit,
-  getDocs,
 } from "firebase/firestore";
 
-import { Package, Clock, ArrowUpRight, Search, InfoIcon, ArrowRightIcon } from "lucide-react";
+import { Package, Clock, ArrowUpRight, Search, InfoIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -60,82 +58,47 @@ export default function RecentActivity() {
     });
   }, []);
 
+  // type 
+    useEffect(() => {
+      const q = query(collection(db, "phone_cover_types")); // ✅ CHECK THIS NAME
+    
+      return onSnapshot(q, (snap) => {
+        const map = {};
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          map[d.id] = data.name; // ✅ CHECK FIELD NAME
+        });
+    
+        setTypeMap(map);
+      });
+    }, []);
+
+  // 🔹 Shops
   useEffect(() => {
-    const fetchMaps = async () => {
-      try {
-        // 1. Fetch Shops
-        const shops = await getDocs(collection(db, "shops"));
-        const sMap = {};
-        shops.forEach(d => sMap[d.id] = d.data().shopName);
-        setShopMap(sMap);
-  
-        // 2. Fetch Models
-        const models = await getDocs(collection(db, "phone_models"));
-        const mMap = {};
-        models.forEach(d => mMap[d.id] = d.data().name);
-        setModelMap(mMap);
-  
-        // 3. Fetch Brands
-        const brands = await getDocs(collection(db, "phone_brands"));
-        const bMap = {};
-        brands.forEach(d => bMap[d.id] = d.data().name);
-        setBrandMap(bMap);
-  
-        // 4. Fetch Types
-        const types = await getDocs(collection(db, "phone_cover_types"));
-        const tMap = {};
-        types.forEach(d => tMap[d.id] = d.data().name);
-        setTypeMap(tMap);
-        
-      } catch (err) {
-        console.error("Error loading maps:", err);
-      }
-    };
-  
-    fetchMaps();
-  }, []); // Empty array means this runs ONLY ONCE when the page loads
-  // // type 
-  //   useEffect(() => {
-  //     const q = query(collection(db, "phone_cover_types")); // ✅ CHECK THIS NAME
-    
-  //     return onSnapshot(q, (snap) => {
-  //       const map = {};
-  //       snap.docs.forEach((d) => {
-  //         const data = d.data();
-  //         map[d.id] = data.name; // ✅ CHECK FIELD NAME
-  //       });
-    
-  //       setTypeMap(map);
-  //     });
-  //   }, []);
+    return onSnapshot(collection(db, "shops"), (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => (map[d.id] = d.data().shopName));
+      setShopMap(map);
+    });
+  }, []);
 
-  // // 🔹 Shops
-  // useEffect(() => {
-  //   return onSnapshot(collection(db, "shops"), (snap) => {
-  //     const map = {};
-  //     snap.docs.forEach((d) => (map[d.id] = d.data().shopName));
-  //     setShopMap(map);
-  //   });
-  // }, []);
-
-  // // 🔹 Models
-  // useEffect(() => {
-  //   return onSnapshot(collection(db, "phone_models"), (snap) => {
-  //     const map = {};
-  //     snap.docs.forEach((d) => (map[d.id] = d.data().name));
-  //     setModelMap(map);
-  //   });
-  // }, []);
-
-  // useEffect(() => {
-  //   return onSnapshot(collection(db, "phone_brands"), (snap) => {
-  //     const map = {};
-  //     snap.docs.forEach((d) => {
-  //       map[d.id] = d.data().name;
-  //     });
-  //     setBrandMap(map);
-  //   });
-  // }, []);
+  // 🔹 Models
+  useEffect(() => {
+    return onSnapshot(collection(db, "phone_models"), (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => (map[d.id] = d.data().name));
+      setModelMap(map);
+    });
+  }, []);
+  useEffect(() => {
+    return onSnapshot(collection(db, "phone_brands"), (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => {
+        map[d.id] = d.data().name;
+      });
+      setBrandMap(map);
+    });
+  }, []);
   
 
   // 🔹 Date + Search filter
@@ -181,7 +144,6 @@ function formatUpdatedBy(updatedBy) {
 }
 
 const ActivityRow = ({ a, detailed = false }) => {
-  const isUpdate = a.old_qty !== undefined && a.old_qty !== a.qty;
   return (
     <div
       className="
@@ -246,20 +208,9 @@ const ActivityRow = ({ a, detailed = false }) => {
           <div className="flex gap-1 justify-end">
 
        
-        {/* <Badge className="px-2 py-0.5 text-xs">
+        <Badge className="px-2 py-0.5 text-xs">
             Qty {a.qty}
-        </Badge> */}
-        {isUpdate ? (
-              <>
-                <Badge variant="outline" className=" text-xs">
-                <span className="text-xs text-muted-foreground line-through">{a.old_qty}</span>
-                <ArrowRightIcon className="h-3 w-3 text-emerald-500" />
-                  {a.qty}
-                </Badge>
-              </>
-            ) : (
-              <Badge variant="outline" className="text-xs">Qty {a.qty}</Badge>
-            )}
+        </Badge>
         </div>
         {detailed && (
           <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">

@@ -61,8 +61,8 @@ export default function StockEntry() {
   const [batchExists, setBatchExists] = useState(false);
   const [existingBatchItem, setExistingBatchItem] = useState(null);
 
-  const debouncedBatchNo = useDebounce(batchNo, 300);
-const debouncedModelName = useDebounce(modelName, 300);
+  const debouncedBatchNo = useDebounce(batchNo, 150);
+const debouncedModelName = useDebounce(modelName, 150);
   // GSAP animation
   useGSAP(() => {
     gsap.from(container.current.children, {
@@ -103,25 +103,33 @@ const debouncedModelName = useDebounce(modelName, 300);
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setShops(isShopUser && userShopId ? data.filter(s => s.id === userShopId) : data);
     });
-    const unsubModels = onSnapshot(query(collection(db, "phone_models"), orderBy("createdAt", "desc")), (snap) => setModels(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubInventory = onSnapshot(collection(db, "inventory"), (snap) => setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-
-    return () => [unsubCats, unsubBrands, unsubShops, unsubModels, unsubInventory].forEach(u => u());
+  
+    // REMOVED unsubModels and unsubInventory from here!
+    return () => [unsubCats, unsubBrands, unsubShops].forEach(u => u());
   }, [isShopUser, userShopId]);
 
-  // FILTERS
-  // const filteredModels = models.filter(m => m.brandId === selectedBrand && m.name.toLowerCase().includes(modelName.toLowerCase()));
-  // const filteredBatches = inventory.filter(i => {
-  //   const model = models.find(m => m.id === i.model_id);
-  //   return i.shop_id === selectedShop && i.brand_id === selectedBrand && i.type_id === selectedCat &&
-  //     model && model.name.toLowerCase() === modelName.toLowerCase() &&
-  //     i.batch_no.toLowerCase().includes(batchNo.toLowerCase());
-  // });
+  useEffect(() => {
+    // If no brand is picked, don't read anything!
+    if (!selectedBrand) {
+      setModels([]);
+      setInventory([]);
+      return;
+    }
+  
+    // Quota Friendly: Filtered by brandId
+    const qModels = query(collection(db, "phone_models"), where("brandId", "==", selectedBrand));
+    const qInv = query(collection(db, "inventory"), where("brand_id", "==", selectedBrand));
+  
+    const unsubM = onSnapshot(qModels, (snap) => setModels(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubI = onSnapshot(qInv, (snap) => setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+  
+    return () => { unsubM(); unsubI(); };
+  }, [selectedBrand]); // Triggers only when you pick a brand
 
-  const filteredModels = models.filter(
-    m => m.brandId === selectedBrand && m.name.toLowerCase().includes(debouncedModelName.toLowerCase())
+    const filteredModels = models.filter(
+    m => m.brandId === selectedBrand && 
+    m.name.toLowerCase().includes(debouncedModelName.toLowerCase())
   );
-
   const filteredBatches = inventory.filter(i => {
     const model = models.find(m => m.id === i.model_id);
     return i.shop_id === selectedShop &&
@@ -136,9 +144,13 @@ const debouncedModelName = useDebounce(modelName, 300);
     if (!selectedShop || !selectedBrand || !modelName || !selectedCat) return;
 
     const model = models.find(m => m.brandId === selectedBrand && m.name.toLowerCase() === modelName.toLowerCase());
-    if (!model) return;
 
-    const invId = `${selectedShop}_${model.id}_${selectedCat}`;
+    
+    if (!model) return;
+// MUST match the Save logic exactly
+const safeBatch = batchNo.replace(/\//g, "-");
+const invId = `${selectedShop}_${model.id}_${selectedCat}_${safeBatch}`;
+    // const invId = `${selectedShop}_${model.id}_${selectedCat}`;
     const inv = inventory.find(i => i.id === invId);
 
     if (inv) {
@@ -201,58 +213,106 @@ const debouncedModelName = useDebounce(modelName, 300);
     await deleteDoc(doc(db, coll, id));
     toast.success("Deleted");
   };
-
-  // SAVE INVENTORY
   const handleSaveStock = async () => {
     if (!batchNo.trim()) return toast.error("Batch number required");
-    if (isShopUser && selectedShop !== userShopId) return toast.error("Cannot add inventory for another shop");
+    if (isShopUser && selectedShop !== userShopId) return toast.error("Unauthorized shop access");
     if (!selectedShop || !selectedBrand || !modelName || !selectedCat || !price) return toast.error("Complete all fields");
-
+  
     const batch = writeBatch(db);
-
-    // MODEL
+  
+    // 1. Get or Create Model logic
     let model = models.find(m => m.brandId === selectedBrand && m.name.toLowerCase() === modelName.toLowerCase());
     if (!model) {
       const modelRef = doc(collection(db, "phone_models"));
       model = { id: modelRef.id };
-      batch.set(modelRef, { name: modelName, normalizedName: modelName.toLowerCase(), brandId: selectedBrand, createdAt: serverTimestamp() });
+      batch.set(modelRef, { 
+        name: modelName, 
+        normalizedName: modelName.toLowerCase(), 
+        brandId: selectedBrand, 
+        createdAt: serverTimestamp() 
+      });
     }
-
-    const inventoryId = `${selectedShop}_${model.id}_${selectedCat}_${batchNo}`;
+  
+    const safeBatchNo = batchNo.replace(/\//g, "-"); 
+    const inventoryId = `${selectedShop}_${model.id}_${selectedCat}_${safeBatchNo}`;
     const invRef = doc(db, "inventory", inventoryId);
-
+  
+    // 2. Clear Quantity Logic
+    const currentOldQty = existingInventory?.qty || 0; // What is currently on the shelf
+    const enteringQty = Number(newQty || qty || 0);    // What is being added now
+    const finalQty = currentOldQty + enteringQty;      // The new total
+  
+    if (enteringQty === 0) return toast.error("Quantity cannot be zero");
+  
+    // 3. Update Main Inventory
     const brandName = brands.find(b => b.id === selectedBrand)?.name || "";
     const typeName = cats.find(c => c.id === selectedCat)?.name || "";
     const shopName = shops.find(s => s.id === selectedShop)?.shopName || "";
-
-    const oldQty = existingInventory?.qty || 0;
-    const addedQty = Number(newQty || 0);
-    let finalQty = existingInventory ? (addedQty <= 0 ? null : oldQty + addedQty) : addedQty || Number(qty);
-
-    if (existingInventory && addedQty <= 0) return toast.error("Enter quantity to add");
-    if (existingInventory) toast.info(`Merged ${oldQty} + ${addedQty} = ${finalQty}`);
-
-    batch.set(invRef, {
+  
+    const inventoryData = {
       batch_no: batchNo,
       shop_id: selectedShop,
       brand_id: selectedBrand,
       model_id: model.id,
       type_id: selectedCat,
       price: Number(price),
-      qty: finalQty,
+      qty: finalQty,           // The current live quantity
+      old_qty: currentOldQty,  // The quantity before this update
       searchKey: `${brandName} ${modelName} ${typeName} ${shopName}`.toLowerCase().trim(),
       updatedAt: serverTimestamp()
-    }, { merge: true });
-
+    };
+  
+    // Only set initial_qty if the document is being created for the first time
+    if (!existingInventory) {
+      inventoryData.initial_qty = enteringQty; 
+    }
+  
+    batch.set(invRef, inventoryData, { merge: true });
+  
+    // 4. Minimal History (For Profit/Loss Reports)
+    // const historyRef = doc(collection(db, "stock_history"));
+    // batch.set(historyRef, {
+    //   inventory_id: inventoryId,
+    //   shop_id: selectedShop,
+    //   model_name: modelName,
+    //   change_qty: enteringQty,      // How much was added
+    //   price_at_time: Number(price), // Price at this specific moment
+    //   type: "stock_entry", 
+    //   timestamp: serverTimestamp(),
+    // });
+  
     await batch.commit();
-    toast.success(existingInventory ? "Inventory updated" : "Inventory created");
-
+    toast.success(`Success: ${currentOldQty} → ${finalQty}`);
+  
     // RESET FORM
-    setModelName(""); setPrice(""); setQty(""); setNewQty(""); setSelectedCat(""); setExistingInventory(null); setBatchNo("");
+    setModelName(""); setPrice(""); setQty(""); setNewQty(""); setBatchNo("");
   };
-
   // ---------------- UI ----------------
   // const [searchTerm, setSearchTerm] = useState("");
+
+  const [selectedBrandForModels, setSelectedBrandForModels] = useState("");
+const [modelsList, setModelsList] = useState([]);
+const [openBrandCombo, setOpenBrandCombo] = useState(false);
+// 1. Fetch Models ONLY when a Brand is selected
+useEffect(() => {
+  if (!selectedBrandForModels) {
+    setModelsList([]);
+    return;
+  }
+
+  // Quota Friendly: Only fetching models belonging to ONE brand
+  const q = query(
+    collection(db, "phone_models"),
+    where("brandId", "==", selectedBrandForModels),
+    orderBy("name", "asc")
+  );
+
+  const unsubscribe = onSnapshot(q, (snap) => {
+    setModelsList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+
+  return () => unsubscribe();
+}, [selectedBrandForModels]);
   return (
     <div ref={container} className="container-gsap p-8 max-w-7xl mx-auto space-y-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -267,13 +327,16 @@ const debouncedModelName = useDebounce(modelName, 300);
           <DialogContent className="sm:max-w-full rounded-none h-full block max-w-[100%] w-full">
             <DialogTitle className=" h-fit">Categories & Brands</DialogTitle>
             <Tabs defaultValue="cats" className="mt-4 w-full">
-              <TabsList className="grid grid-cols-2 gap-2 bg-transparent">
+              <TabsList className="grid grid-cols-3 gap-1 bg-transparent">
                 <TabsTrigger value="cats" className="border-0 
             dark:data-[state=active]:bg-input/0
              transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Cover Types</TabsTrigger>
                 <TabsTrigger value="brands"className="border-0 
             dark:data-[state=active]:bg-input/0
              transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Brands</TabsTrigger>
+                <TabsTrigger value="Models"className="border-0 
+            dark:data-[state=active]:bg-input/0
+             transition-all data-[state=active]:shadow-none data-[state=active]:text-primary text-primary/50  pt-0.5">Models</TabsTrigger>
               </TabsList>
 
               {/* Cats */}
@@ -286,7 +349,7 @@ const debouncedModelName = useDebounce(modelName, 300);
                   {cats.map(c => (
                     <div key={c.id} className="flex items-center gap-2 px-3 py-1 border rounded-full">
                       <span>{c.name}</span>
-                      <Pencil className="h-4 w-4 cursor-pointer" onClick={() => handleEditAttr("phone_cover_types", c.id, c.name)} />
+                      <Pencil className="h-3 w-3 cursor-pointer text-blue-500 hover:text-blue-700" onClick={() => handleEditAttr("phone_cover_types", c.id, c.name)} />
                       <DeleteConfirm onConfirm={() => handleDeleteAttr("phone_cover_types", c.id)} />
                     </div>
                   ))}
@@ -302,12 +365,150 @@ const debouncedModelName = useDebounce(modelName, 300);
                   {brands.map(b => (
                     <div key={b.id} className="flex items-center gap-2 px-3 py-1 border rounded-full">
                       <span>{b.name}</span>
-                      <Pencil className="h-4 w-4 cursor-pointer" onClick={() => handleEditAttr("phone_brands", b.id, b.name)} />
+                      <Pencil className="h-3 w-3 cursor-pointer text-blue-500 hover:text-blue-700" onClick={() => handleEditAttr("phone_brands", b.id, b.name)} />
                       <DeleteConfirm onConfirm={() => handleDeleteAttr("phone_brands", b.id)} />
                     </div>
                   ))}
                 </div>
               </TabsContent>
+              {/* Model */}
+              {/* <TabsContent value="Models" className="space-y-4">
+                
+                <div className="space-y-2">
+                  <Popover open={openBrandCombo} onOpenChange={setOpenBrandCombo}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openBrandCombo}
+                        className="w-full justify-between bg-muted/20 "
+                      >
+                        {selectedBrandForModels
+                          ? brands.find((b) => b.id === selectedBrandForModels)?.name
+                          : "Search brand..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search brand..." />
+                        <CommandEmpty>No brand found.</CommandEmpty>
+                        <CommandGroup className="max-h-60 overflow-y-auto">
+                          {brands.map((b) => (
+                            <CommandItem
+                              key={b.id}
+                              value={b.name} // This allows searching by name
+                              onSelect={() => {
+                                setSelectedBrandForModels(b.id); // Sets the ID for Firestore query
+                                setOpenBrandCombo(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedBrandForModels === b.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {b.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-4">
+                    {!selectedBrandForModels ? (
+                      <div className="text-center py-10 border rounded-xl border-dashed">
+                        <p className="text-sm text-muted-foreground">Select a brand above to see models</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {modelsList.length === 0 && <p className="text-xs text-muted-foreground">No models found for this brand.</p>}
+                        {modelsList.map(m => (
+                          <div key={m.id} className="flex items-center gap-2 px-3 py-1 border rounded-full bg-muted/30">
+                            <span className="text-sm">{m.name}</span>
+                            <Pencil 
+                              className="h-3 w-3 cursor-pointer text-blue-500 hover:text-blue-700" 
+                              onClick={() => handleEditAttr("phone_models", m.id, m.name)} 
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </TabsContent> */}
+              <TabsContent value="Models" className="space-y-4">
+  <div className="space-y-2">
+    <Popover open={openBrandCombo} onOpenChange={setOpenBrandCombo}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={openBrandCombo}
+          className="w-full justify-between bg-muted/20 "
+        >
+          {selectedBrandForModels
+            ? brands.find((b) => b.id === selectedBrandForModels)?.name
+            : "Search brand..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search brand..." />
+          <CommandEmpty>No brand found.</CommandEmpty>
+          <CommandGroup className="max-h-60 overflow-y-auto">
+            {brands.map((b) => (
+              <CommandItem
+                key={b.id}
+                value={b.name}
+                onSelect={() => {
+                  setSelectedBrandForModels(b.id);
+                  setOpenBrandCombo(false);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    selectedBrandForModels === b.id ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {b.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  </div>
+
+  {/* Step 2: Show/Edit/Delete Models */}
+  <div className="space-y-4">
+    {!selectedBrandForModels ? (
+      <div className="text-center py-10 border rounded-xl border-dashed">
+        <p className="text-sm text-muted-foreground">Select a brand above to see models</p>
+      </div>
+    ) : (
+      <div className="flex flex-wrap gap-2">
+        {modelsList.length === 0 && (
+          <p className="text-xs text-muted-foreground">No models found for this brand.</p>
+        )}
+        {modelsList.map((m) => (
+          <div key={m.id} className="flex items-center gap-2 px-3 py-1 border rounded-full bg-muted/30">
+            <span className="text-sm">{m.name}</span>
+            <Pencil 
+              className="h-3 w-3 cursor-pointer text-blue-500 hover:text-blue-700" 
+              onClick={() => handleEditAttr("phone_models", m.id, m.name)} 
+            />
+            {/* Added Delete Button Here */}
+            {/* <DeleteConfirm onConfirm={() => handleDeleteAttr("phone_models", m.id)} /> */}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</TabsContent>
             </Tabs>
           </DialogContent>
         </Dialog>
@@ -367,115 +568,6 @@ function BatchInput({ batchNo, setBatchNo, showBatches, setShowBatches, filtered
   );
 }
 
-/* ------------------- MODEL INPUT ------------------- */
-// function ModelInput({ modelName, setModelName, filteredModels }) {
-//   const [showModels, setShowModels] = useState(false);
-  
-  
-//   return (
-//     <div className="relative" >
-//       <Input value={modelName} onChange={e => { setModelName(e.target.value); setShowModels(true); }} onFocus={() => setShowModels(true)} placeholder="Model" />
-//       {showModels && modelName && filteredModels.length > 0 && (
-//           <div 
-//           className={cn(
-//             "absolute z-20 mt-1 bg-background border w-full rounded-md shadow overflow-y-auto transition-all",
-//             "[&::-webkit-scrollbar]:w-1", 
-//             "[&::-webkit-scrollbar-track]:bg-transparent",
-//             "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/20",
-//             "[&::-webkit-scrollbar-thumb]:rounded-full"
-//           )}
-//           style={{ 
-//             maxHeight: filteredModels.length > 4 ? "160px" : "auto" 
-//           }}
-//         >
-//           {filteredModels.map(m => (
-//             <button key={m.id} className="block  w-full px-3 py-2 text-left hover:bg-muted/10 focus:bg-muted/20 focus:border-0 focus:outline-0" onClick={() => { setModelName(m.name); setShowModels(false); }}>
-//               {m.name}
-//             </button>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// ===== model input : with dropdown close feature ( esc key + outside click)
-// function ModelInput({ modelName, setModelName, filteredModels }) {
-//   const [showModels, setShowModels] = useState(false);
-//   const dropdownRef = useRef(null); // Create the ref
-
-//   // Click outside logic
-//   useEffect(() => {
-//     const handleEvents = (event) => {
-//       // 1. ESC Key Handling
-//       if (event.key === "Escape") {
-//         setShowModels(false);
-//       }
-      
-//       // 2. Click Outside Handling
-//       if (event.type === "mousedown" && dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-//         setShowModels(false);
-//       }
-//     };
-
-//     document.addEventListener("mousedown", handleEvents);
-//     document.addEventListener("keydown", handleEvents); // Listen for key presses
-    
-//     return () => {
-//       document.removeEventListener("mousedown", handleEvents);
-//       document.removeEventListener("keydown", handleEvents);
-//     };
-//   }, []);
-
-//   // Logic to hide dropdown if input matches a model name perfectly
-//   const isExactMatch = filteredModels.some(
-//     (m) => m.name.toLowerCase() === modelName.toLowerCase()
-//   );
-
-//   return (
-//     <div className="relative" ref={dropdownRef}> {/* Attach ref here */}
-//       <div className="relative flex items-center">
-//         <Input 
-//           value={modelName} 
-//           onChange={e => { setModelName(e.target.value); setShowModels(true); }} 
-//           onFocus={() => setShowModels(true)} 
-//           placeholder="Model" 
-//           className="pr-10" 
-//         />
-   
-//       </div>
-
-//       {showModels && modelName && filteredModels.length > 0 && !isExactMatch && (
-//         <div 
-//           className={cn(
-//             "absolute z-20 mt-1 bg-background border w-full rounded-md shadow overflow-y-auto transition-all",
-//             "[&::-webkit-scrollbar]:w-1", 
-//             "[&::-webkit-scrollbar-track]:bg-transparent",
-//             "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/20",
-//             "[&::-webkit-scrollbar-thumb]:rounded-full"
-//           )}
-//           style={{ 
-//             maxHeight: filteredModels.length > 4 ? "160px" : "auto" 
-//           }}
-//         >
-//           {filteredModels.map(m => (
-//             <button 
-//               key={m.id} 
-//               type="button"
-//               className="block w-full px-3 py-2 text-left hover:bg-muted/10 focus:bg-muted/20 focus:border-0 focus:outline-0" 
-//               onClick={() => { 
-//                 setModelName(m.name); 
-//                 setShowModels(false); 
-//               }}
-//             >
-//               {m.name}
-//             </button>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
 
 // neweer version
 function ModelInput({ modelName, setModelName, filteredModels }) {
@@ -545,7 +637,7 @@ function ModelInput({ modelName, setModelName, filteredModels }) {
 function DeleteConfirm({ onConfirm }) {
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild><Trash2 className="h-4 w-4 cursor-pointer text-red-500" /></AlertDialogTrigger>
+      <AlertDialogTrigger asChild><Trash2 className="h-3 w-3 cursor-pointer text-red-500" /></AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete?</AlertDialogTitle>
@@ -553,7 +645,7 @@ function DeleteConfirm({ onConfirm }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction className="bg-destructive/20 text-destructive hover:bg-destructive/30" onClick={onConfirm}>Delete Anyway</AlertDialogAction>
+          <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive hover:cursor-pointer " onClick={onConfirm}>Delete Anyway</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

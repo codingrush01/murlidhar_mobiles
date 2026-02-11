@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/utils/firebase";
 import { Loader2, Trash2 } from "lucide-react";
-import { deleteDoc } from "firebase/firestore";
+import { deleteDoc, writeBatch } from "firebase/firestore";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -54,7 +54,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 30;
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState([]);
@@ -112,158 +112,339 @@ export default function InventoryPage() {
     return () => unsub();
   }, []);
 
-  // --- Inventory Listener (optimized) ---
+  
+  // --- Safer Inventory Loading (No onSnapshot) ---
   useEffect(() => {
+    // We only run this if we have a userRole
     if (!userRole) return;
 
-    let constraints = [];
-    if (userRole === "owner" && userShopId) constraints.push(where("shop_id", "==", userShopId));
-    constraints.push(orderBy("updatedAt", "desc"));
-    constraints.push(limit(PAGE_SIZE));
+    const loadInitialData = async () => {
+      // Reset state for a fresh load/search
+      setInventory([]);
+      setLastDoc(null);
+      setHasMore(true);
 
-    const q = query(collection(db, "inventory"), ...constraints);
+      // Call your existing fetchInventory function with reset = true
+      await fetchInventory(true);
+    };
 
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    loadInitialData();
 
-      // old: setInventory(prev => { const rest = prev.slice(PAGE_SIZE); return [...data, ...rest]; });
-      // new: only update first PAGE_SIZE items in inventory for live updates, keep rest untouched
-      setInventory(prev => {
-        const existingIds = prev.slice(PAGE_SIZE).map(i => i.id);
-        const rest = prev.filter(i => existingIds.includes(i.id));
-        return [...data, ...rest];
-      });
-
-      setLastDoc(snap.docs[snap.docs.length - 1] || null);
-    });
-
-    return () => unsub();
-  }, [userRole, userShopId]);
-
+    // Note: We removed the unsub/onSnapshot entirely to save your 50k reads.
+    // The UI updates instantly because updateField handles the local state.
+  }, [debouncedSearch, userRole, userShopId]);
   // --- Maps (optimized: fetch once instead of live listener) ---
   useEffect(() => {
-    const fetchMap = async () => {
-      const snap = await getDocs(collection(db, "shops"));
-      const map = {};
-      snap.docs.forEach(d => (map[d.id] = d.data().shopName));
-      setShopMap(map);
+    const fetchAllMaps = async () => {
+      // 1. Try to load from Cache first to save 100s of reads
+      const cached = sessionStorage.getItem("inventory_metadata");
+      if (cached) {
+        const { shops, models, brands, types, settings } = JSON.parse(cached);
+        setShopMap(shops); setModelMap(models); setBrandMap(brands); setTypeMap(types); setSettings(settings);
+        return; 
+      }
+  
+      try {
+        // 2. If no cache, fetch all in PARALLEL (faster)
+        const [sSnap, mSnap, bSnap, tSnap, setSnap] = await Promise.all([
+          getDocs(collection(db, "shops")),
+          getDocs(collection(db, "phone_models")),
+          getDocs(collection(db, "phone_brands")),
+          getDocs(collection(db, "phone_cover_types")),
+          getDocs(collection(db, "settings"))
+        ]);
+  
+        const maps = {
+          shops: Object.fromEntries(sSnap.docs.map(d => [d.id, d.data().shopName])),
+          models: Object.fromEntries(mSnap.docs.map(d => [d.id, d.data().name])),
+          brands: Object.fromEntries(bSnap.docs.map(d => [d.id, d.data().name])),
+          types: Object.fromEntries(tSnap.docs.map(d => [d.id, d.data().name])),
+          settings: setSnap.docs.find(d => d.id === "global")?.data() || { low_stock_qty: 5 }
+        };
+  
+        // 3. Set State & Cache it for the rest of the session
+        setShopMap(maps.shops); setModelMap(maps.models); 
+        setBrandMap(maps.brands); setTypeMap(maps.types); setSettings(maps.settings);
+        // sessionStorage.setItem("inventory_metadata", JSON.stringify(maps));
+        
+      } catch (e) {
+        console.error("Failed to fetch metadata", e);
+      }
     };
-    fetchMap();
+  
+    fetchAllMaps();
   }, []);
 
-  useEffect(() => {
-    const fetchMap = async () => {
-      const snap = await getDocs(collection(db, "phone_models"));
-      const map = {};
-      snap.docs.forEach(d => (map[d.id] = d.data().name));
-      setModelMap(map);
-    };
-    fetchMap();
-  }, []);
 
-  useEffect(() => {
-    const fetchMap = async () => {
-      const snap = await getDocs(collection(db, "phone_brands"));
-      const map = {};
-      snap.docs.forEach(d => (map[d.id] = d.data().name));
-      setBrandMap(map);
-    };
-    fetchMap();
-  }, []);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      const snap = await getDocs(collection(db, "settings"));
-      snap.forEach(d => {
-        if (d.id === "global") setSettings(d.data());
-      });
-    };
-    fetchSettings();
-  }, []);
+const updateField = async (id, data) => {
+  // Store the original state in case we need to undo
+  const originalInventory = [...inventory];
+  const currentItem = inventory.find(item => item.id === id);
+  if (!currentItem) return;
 
-  useEffect(() => {
-    const fetchMap = async () => {
-      const snap = await getDocs(collection(db, "phone_cover_types"));
-      const map = {};
-      snap.docs.forEach(d => { map[d.id] = d.data().name; });
-      setTypeMap(map);
-    };
-    fetchMap();
-  }, []);
+  // 1. INSTANT UI UPDATE (Optimistic)
+  setInventory(prev =>
+    prev.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, ...data };
+        if (data.qty !== undefined) updatedItem.old_qty = item.qty;
+        return updatedItem;
+      }
+      return item;
+    })
+  );
 
-  // --- Optimistic Update + Firestore ---
-  const updateField = async (id, data) => {
-    setInventory(prev =>
-      prev.map(item => (item.id === id ? { ...item, ...data } : item))
-    );
-
+  // 2. FIRESTORE UPDATE
+  try {
     let updater = "Unknown";
     if (user) {
-      if (userRole === "admin") updater = `Admin (${user.email})`;
-      else if (userRole === "owner" && userShopId) {
-        const shopName = shopMap[userShopId] || userShopId;
-        updater = `Owner (${user.email}) - ${shopName}`;
-      }
+      const rolePrefix = userRole === "admin" ? "Admin" : "Owner";
+      const shopSuffix = userShopId ? ` - ${shopMap[userShopId] || userShopId}` : "";
+      updater = `${rolePrefix} (${user.email})${shopSuffix}`;
     }
 
-    await updateDoc(doc(db, "inventory", id), {
+    const invRef = doc(db, "inventory", id);
+    const updateData = {
       ...data,
       updatedAt: serverTimestamp(),
       updatedBy: updater,
-    });
-  };
+    };
 
-  const deleteStock = async (id) => {
-    if (!confirm("Delete this batch permanently?")) return;
+    if (data.qty !== undefined) updateData.old_qty = currentItem.qty;
+
+    await updateDoc(invRef, updateData);
+    // Success! No further action needed because UI is already updated.
+
+  } catch (error) {
+    console.error("Update failed:", error);
+    
+    // 3. ROLLBACK (The Safety Net)
+    // If the database fails, put the old data back so the user isn't lied to
+    setInventory(originalInventory);
+    alert("Failed to sync with server. Please check your connection.");
+  }
+};
+// <--- Ensure this brace is closed!
+
+const deleteStock = async (id) => {
+  if (!confirm("Delete this batch permanently?")) return;
+  try {
     await deleteDoc(doc(db, "inventory", id));
-  };
+    setInventory(prev => prev.filter(item => item.id !== id));
+  } catch (error) {
+    console.error("Delete failed:", error);
+  }
+};
 
-  // --- Fetch Inventory (pagination) ---
+  // const fetchInventory = async (reset = false) => {
+  //   if (!userRole) return;
+  
+  //   let constraints = [];
+  
+  //   // 1. Permissions (Always first)
+  //   if (userRole === "owner" && userShopId) {
+  //     constraints.push(where("shop_id", "==", userShopId));
+  //   }
+  
+  //   // 2. Direct DB Search Logic
+  //   if (debouncedSearch.trim()) {
+  //     const searchTerms = debouncedSearch.toLowerCase().trim().split(/[\s_/]+/);
+  //     const firstWord = searchTerms[0];
+    
+  //     // Firestore "starts-with" query
+  //     constraints.push(where("searchKey", ">=", firstWord));
+  //     constraints.push(where("searchKey", "<=", firstWord + "\uf8ff"));
+  //     constraints.push(orderBy("searchKey"));
+  //   } 
+  //   else {
+  //     // Default sort by time when not searching
+  //     constraints.push(orderBy("updatedAt", "desc"));
+  //   }
+  
+  //   constraints.push(limit(PAGE_SIZE));
+    
+  //   if (!reset && lastDoc) {
+  //     constraints.push(startAfter(lastDoc));
+  //   }
+  
+  //   try {
+  //     const q = query(collection(db, "inventory"), ...constraints);
+  //     const snap = await getDocs(q);
+  
+  //     const newData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+  //     setInventory(prev => {
+  //       if (reset) return newData;
+  //       const existingIds = new Set(prev.map(item => item.id));
+  //       const filteredNewData = newData.filter(item => !existingIds.has(item.id));
+  //       return [...prev, ...filteredNewData];
+  //     });
+  
+  //     setLastDoc(snap.docs[snap.docs.length - 1] || null);
+  //     setHasMore(snap.docs.length === PAGE_SIZE);
+  //   } catch (error) {
+  //     console.error("Firestore Query Error:", error);
+  //   }
+  // };
+  // // old: useEffect reset on every search
+  // // new: use debouncedSearch to avoid too many fetches
+  // useEffect(() => {
+  //   setInventory([]);
+  //   setLastDoc(null);
+  //   setHasMore(true);
+  //   fetchInventory(true);
+  // }, [debouncedSearch, userRole, userShopId]);
+
+  // // --- Displayed Inventory (client-side filter) ---
+  
+  // // d2
+  // // const displayed = useMemo(() => {
+  // //   const lowQty = settings?.low_stock_qty ?? 5;
+  // //   if (!debouncedSearch.trim()) {
+  // //     return inventory.filter(i => {
+  // //       if (tab === "low") return i.qty < lowQty;
+  // //       if (tab === "healthy") return i.qty >= lowQty;
+  // //       return true;
+  // //     });
+  // //   }
+  
+  // //   // Split search into words (handles "pixel 8a" or "pixel_8a")
+  // //   const keywords = debouncedSearch.trim().toLowerCase().split(/[\s_]+/);
+  
+  // //   return inventory.filter(i => {
+  // //     // Clean the DB searchKey by replacing underscores with spaces for comparison
+  // //     const dbKey = (i.searchKey || "").toLowerCase().replace(/_/g, " ");
+      
+  // //     // Check if EVERY keyword from search is inside the DB key
+  // //     const matchesSearch = keywords.every(k => dbKey.includes(k));
+      
+  // //     if (!matchesSearch) return false;
+  
+  // //     if (tab === "low") return i.qty < lowQty;
+  // //     if (tab === "healthy") return i.qty >= lowQty;
+  // //     return true;
+  // //   });
+  // // }, [inventory, debouncedSearch, tab, shopMap, modelMap, brandMap, settings]);
+  // // d3
+  // // const displayed = useMemo(() => {
+  // //   const lowQty = settings?.low_stock_qty ?? 5;
+  // //   if (!debouncedSearch.trim()) {
+  // //     return inventory.filter(i => {
+  // //       if (tab === "low") return i.qty < lowQty;
+  // //       if (tab === "healthy") return i.qty >= lowQty;
+  // //       return true;
+  // //     });
+  // //   }
+  
+  // //   // UPDATED: Added / to the regex split
+  // //   const keywords = debouncedSearch.trim().toLowerCase().split(/[\s_/]+/);
+  
+  // //   return inventory.filter(i => {
+  // //     // UPDATED: Clean the dbKey to replace both underscores and slashes with spaces
+  // //     // This ensures that "note_11" or "note/11" can both be found
+  // //     const dbKey = (i.searchKey || "").toLowerCase().replace(/[/_]/g, " ");
+      
+  // //     const matchesSearch = keywords.every(k => dbKey.includes(k));
+      
+  // //     if (!matchesSearch) return false;
+  
+  // //     if (tab === "low") return i.qty < lowQty;
+  // //     if (tab === "healthy") return i.qty >= lowQty;
+  // //     return true;
+  // //   });
+  // // }, [inventory, debouncedSearch, tab, settings]); // Removed unused maps from dependency array
+
+  // // d4
+  // const displayed = useMemo(() => {
+  //   const lowQty = settings?.low_stock_qty ?? 5;
+    
+  //   // 1. Filter by Tab (All, Low, or Healthy)
+  //   let filtered = inventory.filter(i => {
+  //     if (tab === "low") return i.qty < lowQty;
+  //     if (tab === "healthy") return i.qty >= lowQty;
+  //     return true;
+  //   });
+  
+  //   // 2. If no search, show everything from that tab
+  //   if (!search.trim()) return filtered;
+  
+  //   // 3. Simple Search: Check if the raw searchKey contains your search text
+  //   return filtered.filter(i => {
+  //     const dbKey = (i.searchKey || "").toLowerCase();
+  //     const searchText = search.toLowerCase().trim();
+      
+  //     return dbKey.includes(searchText);
+  //   });
+  // }, [inventory, search, tab, settings]);
+
   const fetchInventory = async (reset = false) => {
     if (!userRole) return;
 
     let constraints = [];
-    if (userRole === "owner" && userShopId) constraints.push(where("shop_id", "==", userShopId));
+
+    if (userRole === "owner" && userShopId) {
+      constraints.push(where("shop_id", "==", userShopId));
+    }
+
+    // We fetch everything ordered by time to show the newest data as it is in the DB
     constraints.push(orderBy("updatedAt", "desc"));
     constraints.push(limit(PAGE_SIZE));
-    if (!reset && lastDoc) constraints.push(startAfter(lastDoc));
 
-    const q = query(collection(db, "inventory"), ...constraints);
-    const snap = await getDocs(q);
+    if (!reset && lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
 
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    try {
+      const q = query(collection(db, "inventory"), ...constraints);
+      const snap = await getDocs(q);
 
-    setInventory(prev => (reset ? data : [...prev, ...data]));
-    setLastDoc(snap.docs[snap.docs.length - 1] || null);
-    setHasMore(snap.docs.length === PAGE_SIZE);
+      const newData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      setInventory(prev => {
+        if (reset) return newData;
+        const existingIds = new Set(prev.map(item => item.id));
+        const filteredNewData = newData.filter(item => !existingIds.has(item.id));
+        return [...prev, ...filteredNewData];
+      });
+
+      setLastDoc(snap.docs[snap.docs.length - 1] || null);
+      setHasMore(snap.docs.length === PAGE_SIZE);
+    } catch (error) {
+      console.error("Firestore Query Error:", error);
+    }
   };
 
-  // old: useEffect reset on every search
-  // new: use debouncedSearch to avoid too many fetches
+  // Only refetch when the user or shop changes
   useEffect(() => {
     setInventory([]);
     setLastDoc(null);
     setHasMore(true);
     fetchInventory(true);
-  }, [debouncedSearch, userRole, userShopId]);
+  }, [userRole, userShopId]);
 
-  // --- Displayed Inventory (client-side filter) ---
+  // Instant local filter that searches inside the searchKey string
   const displayed = useMemo(() => {
     const lowQty = settings?.low_stock_qty ?? 5;
-    const keywords = debouncedSearch.trim().toLowerCase().split(/\s+/);
-
-    return inventory.filter(i => {
-      const matchesSearch = !keywords.length || keywords.every(k =>
-        i.searchKey?.toLowerCase().includes(k)
-      );
-      if (!matchesSearch) return false;
-
+    
+    let filtered = inventory.filter(i => {
       if (tab === "low") return i.qty < lowQty;
       if (tab === "healthy") return i.qty >= lowQty;
       return true;
     });
-  }, [inventory, debouncedSearch, tab, shopMap, modelMap, brandMap, settings]);
-  
+
+    if (!search.trim()) return filtered;
+
+    const searchText = search.toLowerCase().trim();
+
+    return filtered.filter(i => {
+      // Accesses the raw data field as it exists in your database
+      const dbKey = (i.searchKey || "").toLowerCase();
+      
+      // Matches any part of the string (e.g., "g34" inside "motorola g34/g45...")
+      return dbKey.includes(searchText);
+    });
+  }, [inventory, search, tab, settings]);
   return (
     <Card className="rounded-[2rem] shadow-none border-none bg-transparent">
       <CardHeader className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -276,6 +457,7 @@ export default function InventoryPage() {
               className="pl-9 shadow-none"
               value={search}
               onChange={(e) => setSearch(e.target.value.toLowerCase())}
+              
             />
           </div>
           <AdvancedSummaryDialog inventory={inventory} />
@@ -355,9 +537,20 @@ export default function InventoryPage() {
                     <Input
                       type="number"
                       className="h-8"
+                      defaultValue={i.price} // Use defaultValue instead of value
+                      onBlur={(e) => {
+                        const newPrice = Number(e.target.value);
+                        if (newPrice !== i.price) {
+                          updateField(i.id, { price: newPrice });
+                        }
+                      }}
+                    />
+                    {/* <Input
+                      type="number"
+                      className="h-8"
                       value={i.price}
                       onChange={(e) => updateField(i.id, { price: Number(e.target.value) })}
-                    />
+                    /> */}
 
           
     <div className="flex items-center justify-center flex-col lg:flex-row pr-4 gap-[0.5em] md:gap-2  col-span-2">
@@ -550,6 +743,11 @@ export default function InventoryPage() {
             brandMap={brandMap}
             modelMap={modelMap}
             shopMap={shopMap}
+            onUpdate={(id, newData) => {
+              setInventory(prev => 
+                prev.map(item => item.id === id ? { ...item, ...newData } : item)
+              );
+            }}
             onClose={() => setReorderItem(null)}
           />
         )}

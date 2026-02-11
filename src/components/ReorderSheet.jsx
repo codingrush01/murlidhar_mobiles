@@ -24,37 +24,93 @@ export function ReorderSheet({
   modelMap,
   shopMap,
   onClose,
+  onUpdate
 }) {
   const [price, setPrice] = useState(item.price);
   const [addQty, setAddQty] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // const handleSave = async () => {
+  //   // if (!addQty || Number(addQty) <= 0) {
+  //   //   return toast.error("Enter quantity to add");
+  //   // }
+  //   if (addQty === "" || addQty === null || Number(addQty) < 0) {
+  //     return toast.error("Enter valid quantity");
+  //   }
+
+  //   try {
+  //     setLoading(true);
+  //     const currentQty = item.qty; // What is there now
+  //     const added = Number(addQty);
+  //     const newTotalQty = currentQty + added;
+
+  //     const updateData = {
+  //       price: newPrice,
+  //       qty: newTotalQty,
+  //       old_qty: currentQty,
+  //       updatedAt: new Date(), // Local approximation of serverTimestamp
+  //     };
+
+  //     await updateDoc(doc(db, "inventory", item.id), {
+  //       price: Number(price),
+  //       // qty: item.qty + Number(addQty),
+  //       qty: newTotalQty,
+  //       old_qty: currentQty, // <--- ADD THIS LINE TO FIX THE ISSU
+  //       updatedAt: serverTimestamp(),
+  //     });
+
+      
+
+      
+  //     toast.success("Stock reordered successfully");
+  //     onClose();
+  //   } catch (err) {
+  //     toast.error("Failed to update stock");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSave = async () => {
-    // if (!addQty || Number(addQty) <= 0) {
-    //   return toast.error("Enter quantity to add");
-    // }
     if (addQty === "" || addQty === null || Number(addQty) < 0) {
       return toast.error("Enter valid quantity");
     }
 
     try {
       setLoading(true);
+      const currentQty = item.qty; 
+      const added = Number(addQty);
+      const newTotalQty = currentQty + added;
+      const newPrice = Number(price); // Define this clearly
 
+      // 1. Define the data object for both Firestore and the UI
+      const updateData = {
+        price: newPrice,
+        qty: newTotalQty,
+        old_qty: currentQty,
+        updatedAt: new Date().toISOString(), // Local timestamp for immediate UI
+      };
+
+      // 2. Update Firestore
       await updateDoc(doc(db, "inventory", item.id), {
-        price: Number(price),
-        qty: item.qty + Number(addQty),
-        updatedAt: serverTimestamp(),
+        ...updateData,
+        updatedAt: serverTimestamp(), // Firestore specific timestamp
       });
 
+      // 3. CRITICAL: Trigger the UI update in the parent component
+      if (onUpdate) {
+        onUpdate(item.id, updateData);
+      }
+      
       toast.success("Stock reordered successfully");
       onClose();
     } catch (err) {
+      console.error("Update error:", err);
       toast.error("Failed to update stock");
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <Sheet open onOpenChange={onClose}>
       <SheetContent side="right" className="w-full max-w-[400px]">
@@ -79,8 +135,19 @@ export function ReorderSheet({
             />
           </div>
             {/* QTY ROW */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
             {/* OLD QTY */}
+            <div>
+                <label className="text-xs text-muted-foreground">
+                initial Qty
+                </label>
+                <Input
+                type="number"
+                value={item.initial_qty}
+                disabled
+                className="bg-muted cursor-not-allowed"
+                />
+            </div>
             <div>
                 <label className="text-xs text-muted-foreground">
                 Current Qty
@@ -121,6 +188,9 @@ export function ReorderSheet({
                     {item.qty + (Number(addQty) || 0)}
                 </span>
                 </span>
+                {/* <div className="bg-secondary h-0.5 rounded-4xl mb-2 w-full block"></div>
+                "initial qty" is shown as very first Qty */}
+                
             </AlertDescription>
             </Alert>
 

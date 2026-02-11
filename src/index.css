@@ -258,3 +258,14 @@
 .recharts-layer.recharts-cartesian-axis-tick-label{
   font-size: 12px;
 }
+
+
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground); 
+}
+
+::-moz-selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground); 
+}
